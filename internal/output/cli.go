@@ -2,7 +2,6 @@ package output
 
 import (
 	"fmt"
-	"html"
 
 	"github.com/example/GoLinkfinderEVO/internal/model"
 )
@@ -10,6 +9,6 @@ import (
 // PrintCLI prints endpoints to stdout in CLI mode.
 func PrintCLI(endpoints []model.Endpoint) {
 	for _, ep := range endpoints {
-		fmt.Println(html.EscapeString(ep.Link))
+		fmt.Println(ep.Link)
 	}
 }

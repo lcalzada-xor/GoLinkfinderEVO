@@ -1,30 +1,74 @@
 package network
 
-import "strings"
+import (
+	"net/url"
+	"path"
+	"strings"
+)
 
 // CheckURL validates a JS endpoint and resolves it to an absolute URL based on the provided base.
 func CheckURL(raw, base string) (string, bool) {
-	if !strings.HasSuffix(raw, ".js") {
+	candidate := strings.TrimSpace(raw)
+	if candidate == "" {
 		return "", false
 	}
 
-	parts := strings.Split(raw, "/")
+	trimmed := candidate
+	if idx := strings.IndexAny(trimmed, "?#"); idx != -1 {
+		trimmed = trimmed[:idx]
+	}
+
+	lowerTrimmed := strings.ToLower(trimmed)
+	if !strings.HasSuffix(lowerTrimmed, ".js") {
+		return "", false
+	}
+
+	parts := strings.Split(lowerTrimmed, "/")
 	for _, p := range parts {
 		if p == "node_modules" || p == "jquery.js" {
 			return "", false
 		}
 	}
 
-	resolved := raw
-	if strings.HasPrefix(resolved, "//") {
-		resolved = "https:" + resolved
-	} else if !strings.HasPrefix(resolved, "http") {
-		if strings.HasPrefix(resolved, "/") {
-			resolved = base + resolved
-		} else {
-			resolved = base + "/" + resolved
-		}
+	ref, err := url.Parse(candidate)
+	if err != nil {
+		return "", false
 	}
 
-	return resolved, true
+	if ref.IsAbs() {
+		return ref.String(), true
+	}
+
+	if strings.HasPrefix(candidate, "//") {
+		resolved := "https:" + candidate
+		return resolved, true
+	}
+
+	baseURL, err := url.Parse(base)
+	if err != nil {
+		return "", false
+	}
+
+	if baseURL.Scheme == "" {
+		baseURL.Scheme = "https"
+	}
+
+	// Ensure the base URL represents a directory for relative resolution.
+	if baseURL.Path != "" && !strings.HasSuffix(baseURL.Path, "/") {
+		dir := path.Dir(baseURL.Path)
+		if dir == "." {
+			dir = "/"
+		}
+		if !strings.HasSuffix(dir, "/") {
+			dir += "/"
+		}
+		baseURL.Path = dir
+	}
+
+	resolved := baseURL.ResolveReference(ref)
+	if resolved == nil || resolved.Scheme == "" {
+		return "", false
+	}
+
+	return resolved.String(), true
 }
