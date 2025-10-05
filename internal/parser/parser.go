@@ -12,7 +12,25 @@ import (
 	"github.com/example/GoLinkfinderEVO/internal/model"
 )
 
-const endpointBody = `
+const generalExtensionPattern = `[a-zA-Z0-9-]{1,6}`
+
+// defaultSpecificExtensions enumerates well-known extensions that should always be
+// matched by the endpoint detection regex. Extend this list to quickly support
+// additional common cases.
+var defaultSpecificExtensions = []string{
+	"action",
+	"asp",
+	"aspx",
+	"html",
+	"js",
+	"json",
+	"jsp",
+	"php",
+	"txt",
+	"xml",
+}
+
+const endpointBodyTemplate = `
 
   (
     ((?:(?:[a-zA-Z][a-zA-Z0-9+.-]*://)|//)
@@ -29,7 +47,7 @@ const endpointBody = `
 
     ([a-zA-Z0-9_\-/]{1,}/
     [a-zA-Z0-9_\-/.]{1,}
-    \.(?:[a-zA-Z]{1,4}|action)
+    \.(?:{{GENERAL_EXTENSION_PATTERN}}|{{SPECIFIC_EXTENSIONS}})
     (?:[\?|#][^"|']{0,}|))
 
     |
@@ -41,25 +59,54 @@ const endpointBody = `
     |
 
     ([a-zA-Z0-9_\-]{1,}
-    \.(?:php|asp|aspx|jsp|json|
-         action|html|js|txt|xml)
+    \.(?:{{GENERAL_EXTENSION_PATTERN}}|{{SPECIFIC_EXTENSIONS}})
     (?:[\?|#][^"|']{0,}|))
 
   )
 
 `
 
-const rawRegex = "" +
-	`
+var endpointBody = buildEndpointBody()
+
+var rawRegex = buildRawRegex(endpointBody)
+
+func buildEndpointBody() string {
+	specificPattern := buildSpecificExtensionsPattern(defaultSpecificExtensions)
+	if specificPattern == "" {
+		specificPattern = generalExtensionPattern
+	}
+	replacer := strings.NewReplacer(
+		"{{GENERAL_EXTENSION_PATTERN}}", generalExtensionPattern,
+		"{{SPECIFIC_EXTENSIONS}}", specificPattern,
+	)
+	return replacer.Replace(endpointBodyTemplate)
+}
+
+func buildSpecificExtensionsPattern(exts []string) string {
+	if len(exts) == 0 {
+		return ""
+	}
+
+	normalized := append([]string(nil), exts...)
+	sort.Strings(normalized)
+
+	return strings.Join(normalized, "|")
+}
+
+func buildRawRegex(body string) string {
+	return "" +
+		`
   (?:
-    "` + endpointBody + `"
+    "` + body + `"
     |
-    '` + endpointBody + `'
+    '` + body + `'
     |
-    ` + "`" + endpointBody + "`" + `
+    ` + "`" + body + "`" + `
   )
 
 `
+}
+
 const contextDelimiter = "\n"
 
 var endpointRegex = regexp.MustCompile(compactPattern(rawRegex))
