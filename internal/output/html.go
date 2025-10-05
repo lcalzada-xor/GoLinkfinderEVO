@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -56,6 +57,12 @@ func AppendHTML(builder *strings.Builder, report ResourceReport) {
 		builder.WriteString("\" class=\"endpoint-link\" target=\"_blank\" rel=\"nofollow noopener noreferrer\">")
 		builder.WriteString(safeLink)
 		builder.WriteString("</a>")
+		if ep.Line > 0 {
+			builder.WriteString("\n                        <span class=\"endpoint-line\">Line ")
+			builder.WriteString(strconv.Itoa(ep.Line))
+			builder.WriteString("</span>")
+		}
+
 		builder.WriteString("\n                        <button type=\"button\" class=\"copy-button\" data-copy=\"")
 		builder.WriteString(safeLink)
 		builder.WriteString("\">Copy</button>")
