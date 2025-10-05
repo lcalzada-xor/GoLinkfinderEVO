@@ -2,9 +2,11 @@ package network
 
 import (
 	"bytes"
+	"compress/gzip"
 	"compress/zlib"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -44,6 +46,46 @@ func TestFetchDeflate(t *testing.T) {
 
 	if content != payload {
 		t.Fatalf("unexpected content: got %q want %q", content, payload)
+	}
+}
+
+func TestFetchHandlesCorruptGzip(t *testing.T) {
+	resetHTTPClient()
+	t.Cleanup(resetHTTPClient)
+
+	const payload = "this is some gzipped content that will be truncated"
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write([]byte(payload)); err != nil {
+		t.Fatalf("failed to write gzip payload: %v", err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatalf("failed to close gzip writer: %v", err)
+	}
+
+	truncated := buf.Bytes()[:len(buf.Bytes())/2]
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Encoding", "gzip")
+		if _, err := w.Write(truncated); err != nil {
+			t.Fatalf("failed to write response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	cfg := config.Config{Timeout: time.Second}
+	content, err := Fetch(server.URL, cfg)
+	if err != nil {
+		t.Fatalf("Fetch returned error: %v", err)
+	}
+
+	if content == "" {
+		t.Fatal("expected partial content but received empty string")
+	}
+
+	if !strings.HasPrefix(payload, content) && !strings.HasPrefix(content, payload) {
+		t.Fatalf("unexpected decompressed content: %q", content)
 	}
 }
 

@@ -1,6 +1,7 @@
 package network
 
 import (
+	"bytes"
 	"compress/gzip"
 	"compress/zlib"
 	"crypto/tls"
@@ -8,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -107,15 +109,7 @@ func Fetch(rawURL string, cfg config.Config) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	reader, err := decodeBody(resp)
-	if err != nil {
-		return "", err
-	}
-	if reader != resp.Body {
-		defer reader.Close()
-	}
-
-	data, err := io.ReadAll(reader)
+	data, err := readResponseBody(resp)
 	if err != nil {
 		return "", err
 	}
@@ -131,21 +125,79 @@ func resetHTTPClient() {
 	sharedSetting = clientSettings{}
 }
 
-func decodeBody(resp *http.Response) (io.ReadCloser, error) {
-	switch resp.Header.Get("Content-Encoding") {
-	case "gzip":
-		gz, err := gzip.NewReader(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-		return gz, nil
-	case "deflate":
-		zr, err := zlib.NewReader(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-		return zr, nil
-	default:
-		return resp.Body, nil
+func readResponseBody(resp *http.Response) ([]byte, error) {
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
 	}
+
+	encoding := strings.ToLower(strings.TrimSpace(resp.Header.Get("Content-Encoding")))
+	if encoding == "" {
+		return raw, nil
+	}
+
+	// Some servers return multiple encodings separated by commas. Only the first
+	// value is considered as the effective encoding for this response.
+	if idx := strings.IndexByte(encoding, ','); idx != -1 {
+		encoding = strings.TrimSpace(encoding[:idx])
+	}
+
+	var (
+		decoded []byte
+		decErr  error
+	)
+
+	switch encoding {
+	case "gzip":
+		decoded, decErr = decompressBytes(raw, func(r io.Reader) (io.ReadCloser, error) {
+			return gzip.NewReader(r)
+		})
+	case "deflate":
+		decoded, decErr = decompressBytes(raw, func(r io.Reader) (io.ReadCloser, error) {
+			return zlib.NewReader(r)
+		})
+	default:
+		return raw, nil
+	}
+
+	if decErr == nil {
+		return decoded, nil
+	}
+
+	if len(decoded) > 0 && isRecoverableDecompressionError(decErr) {
+		return decoded, nil
+	}
+	if isRecoverableDecompressionError(decErr) {
+		return raw, nil
+	}
+
+	return nil, decErr
+}
+
+func decompressBytes(data []byte, opener func(io.Reader) (io.ReadCloser, error)) ([]byte, error) {
+	reader, err := opener(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+
+	decoded, readErr := io.ReadAll(reader)
+	if readErr != nil {
+		return decoded, readErr
+	}
+
+	return decoded, nil
+}
+
+func isRecoverableDecompressionError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	return errors.Is(err, io.EOF) ||
+		errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, gzip.ErrHeader) ||
+		errors.Is(err, gzip.ErrChecksum) ||
+		errors.Is(err, zlib.ErrChecksum) ||
+		errors.Is(err, zlib.ErrHeader)
 }
