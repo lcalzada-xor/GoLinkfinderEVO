@@ -56,8 +56,8 @@ func TestHighlightContext(t *testing.T) {
 		t.Fatalf("expected context to be highlighted")
 	}
 
-	if !regexp.MustCompile(`<span style='background-color:yellow'>`).MatchString(highlighted) {
-		t.Fatalf("expected highlight span in context, got %q", highlighted)
+	if !regexp.MustCompile(`<mark class='highlight'>`).MatchString(highlighted) {
+		t.Fatalf("expected highlighted mark element in context, got %q", highlighted)
 	}
 
 	if !regexp.MustCompile(regexp.QuoteMeta(link)).MatchString(highlighted) {

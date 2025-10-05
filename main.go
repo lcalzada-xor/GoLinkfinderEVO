@@ -5,6 +5,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/example/GoLinkfinderEVO/internal/config"
 	"github.com/example/GoLinkfinderEVO/internal/input"
@@ -37,7 +38,15 @@ func main() {
 
 	endpointRegex := parser.EndpointRegex()
 
-	var outputBuilder strings.Builder
+	generatedAt := time.Now()
+
+	var htmlBuilder strings.Builder
+	var builder *strings.Builder
+	if mode == output.ModeHTML {
+		builder = &htmlBuilder
+	}
+
+	reports := make([]output.ResourceReport, 0, len(targets))
 
 	for _, t := range targets {
 		content, err := resolveContent(t, cfg)
@@ -47,20 +56,33 @@ func main() {
 
 		endpoints := parser.FindEndpoints(content, endpointRegex, mode == output.ModeHTML, filterRegex, true)
 
+		report := output.ResourceReport{Resource: t.URL, Endpoints: endpoints}
+		render(mode, report, builder)
+		reports = append(reports, report)
+
 		if cfg.Domain {
 			visited := map[string]struct{}{}
-			processDomain(cfg, t.URL, endpoints, endpointRegex, filterRegex, mode, &outputBuilder, visited)
+			processDomain(cfg, t.URL, endpoints, endpointRegex, filterRegex, mode, builder, &reports, visited)
 		}
+	}
 
-		render(mode, t.URL, endpoints, &outputBuilder)
+	meta := output.BuildMetadata(reports, generatedAt)
+
+	if cfg.Raw != "" {
+		if err := output.WriteRaw(cfg.Raw, reports, meta); err != nil {
+			exitWithError(fmt.Errorf("unable to write raw output: %w", err))
+		}
 	}
 
 	if mode == output.ModeHTML {
-		if err := output.SaveHTML(outputBuilder.String(), cfg.Output); err != nil {
+		if err := output.SaveHTML(htmlBuilder.String(), cfg.Output, meta); err != nil {
 			fmt.Fprintf(os.Stderr, "Output can't be saved in %s due to exception: %v\n", cfg.Output, err)
 			os.Exit(1)
 		}
+		return
 	}
+
+	output.PrintSummary(meta)
 }
 
 func determineMode(outputFlag string) output.Mode {
@@ -83,7 +105,7 @@ func resolveContent(t model.Target, cfg config.Config) (string, error) {
 }
 
 func processDomain(cfg config.Config, baseResource string, endpoints []model.Endpoint, regex *regexp.Regexp, filter *regexp.Regexp,
-	mode output.Mode, builder *strings.Builder, visited map[string]struct{}) {
+	mode output.Mode, builder *strings.Builder, reports *[]output.ResourceReport, visited map[string]struct{}) {
 	for _, ep := range endpoints {
 		resolved, ok := network.CheckURL(ep.Link, baseResource)
 		if !ok {
@@ -109,21 +131,25 @@ func processDomain(cfg config.Config, baseResource string, endpoints []model.End
 		}
 
 		newEndpoints := parser.FindEndpoints(body, regex, mode == output.ModeHTML, filter, true)
-		render(mode, resolved, newEndpoints, builder)
+		report := output.ResourceReport{Resource: resolved, Endpoints: newEndpoints}
+		render(mode, report, builder)
+		if reports != nil {
+			*reports = append(*reports, report)
+		}
 
 		if len(newEndpoints) > 0 {
-			processDomain(cfg, resolved, newEndpoints, regex, filter, mode, builder, visited)
+			processDomain(cfg, resolved, newEndpoints, regex, filter, mode, builder, reports, visited)
 		}
 	}
 }
 
-func render(mode output.Mode, resource string, endpoints []model.Endpoint, builder *strings.Builder) {
+func render(mode output.Mode, report output.ResourceReport, builder *strings.Builder) {
 	if mode == output.ModeCLI {
-		output.PrintCLI(resource, endpoints)
+		output.PrintCLI(report)
 		return
 	}
 
-	output.AppendHTML(builder, resource, endpoints)
+	output.AppendHTML(builder, report)
 }
 
 func exitWithError(err error) {

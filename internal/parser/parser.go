@@ -190,8 +190,7 @@ func beautify(content string) string {
 func HighlightContext(context, link string) string {
 	escapedContext := html.EscapeString(context)
 	escapedLink := html.EscapeString(link)
-	highlight := strings.ReplaceAll(escapedContext, escapedLink, "<span style='background-color:yellow'>"+escapedLink+"</span>")
-	return highlight
+	return strings.ReplaceAll(escapedContext, escapedLink, "<mark class='highlight'>"+escapedLink+"</mark>")
 }
 
 func mustCompileScriptExtensions(exts []string) *regexp.Regexp {
