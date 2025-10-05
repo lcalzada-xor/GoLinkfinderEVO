@@ -122,6 +122,7 @@ func FindEndpoints(content string, regex *regexp.Regexp, includeContext bool, fi
 		}
 
 		ep := model.Endpoint{Link: link}
+		ep.Line = lineNumber(processed, matchStart)
 		if includeContext {
 			ep.Context = extractContext(processed, matchStart, matchEnd, false)
 		}
@@ -129,6 +130,18 @@ func FindEndpoints(content string, regex *regexp.Regexp, includeContext bool, fi
 	}
 
 	return results
+}
+
+func lineNumber(content string, index int) int {
+	if index < 0 {
+		return 0
+	}
+
+	if index > len(content) {
+		index = len(content)
+	}
+
+	return strings.Count(content[:index], "\n") + 1
 }
 
 func extractContext(content string, matchStart, matchEnd int, includeDelimiter bool) string {

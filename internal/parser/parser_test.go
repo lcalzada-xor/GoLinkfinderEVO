@@ -29,6 +29,10 @@ func TestFindEndpointsWithContextAndFilter(t *testing.T) {
 	if !regexp.MustCompile(`script`).MatchString(ep.Context) {
 		t.Fatalf("expected context to contain surrounding code, got %q", ep.Context)
 	}
+
+	if ep.Line != 2 {
+		t.Fatalf("expected endpoint to be on line 2, got %d", ep.Line)
+	}
 }
 
 func TestFindEndpointsWithoutContext(t *testing.T) {
@@ -43,6 +47,10 @@ func TestFindEndpointsWithoutContext(t *testing.T) {
 
 	if endpoints[0].Context != "" {
 		t.Fatalf("expected context to be empty when includeContext is false")
+	}
+
+	if endpoints[0].Line != 1 {
+		t.Fatalf("expected endpoint to be on line 1, got %d", endpoints[0].Line)
 	}
 }
 

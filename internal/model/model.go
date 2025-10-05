@@ -11,4 +11,5 @@ type Target struct {
 type Endpoint struct {
 	Link    string
 	Context string
+	Line    int
 }
