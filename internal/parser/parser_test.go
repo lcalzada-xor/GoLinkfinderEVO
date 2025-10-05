@@ -112,3 +112,20 @@ func TestEndpointRegexMatchesHostnamesWithoutDots(t *testing.T) {
 		}
 	}
 }
+
+func TestEndpointRegexSupportsExtendedSchemes(t *testing.T) {
+	content := `'chrome-extension://example/extensions.js' "//cdn.example.com/lib.js"`
+
+	endpoints := FindEndpoints(content, EndpointRegex(), false, nil, false)
+
+	if len(endpoints) != 2 {
+		t.Fatalf("expected 2 endpoints, got %d", len(endpoints))
+	}
+
+	expected := []string{"chrome-extension://example/extensions.js", "//cdn.example.com/lib.js"}
+	for i, ep := range endpoints {
+		if ep.Link != expected[i] {
+			t.Fatalf("unexpected endpoint at index %d: got %q, want %q", i, ep.Link, expected[i])
+		}
+	}
+}
