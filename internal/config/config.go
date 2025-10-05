@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strconv"
 	"time"
 )
@@ -23,11 +24,18 @@ type Config struct {
 	Proxy    string
 	Insecure bool
 	Timeout  time.Duration
+	Workers  int
+	MaxDepth int
 }
 
 // ParseFlags parses CLI flags into a Config value.
 func ParseFlags() (Config, error) {
-	cfg := Config{Timeout: 10 * time.Second}
+	defaultWorkers := runtime.NumCPU()
+	if defaultWorkers < 1 {
+		defaultWorkers = 1
+	}
+
+	cfg := Config{Timeout: 10 * time.Second, Workers: defaultWorkers}
 
 	flag.Usage = func() {
 		out := flag.CommandLine.Output()
@@ -39,12 +47,15 @@ func ParseFlags() (Config, error) {
 		printOption(out, "input", "i", "string", "URL, file or folder to analyse. For folders you can use wildcards (e.g. '/*.js').", "")
 		printOption(out, "output", "o", "string", "Save the HTML report to this path. Leave empty for CLI output.", "")
 		printOption(out, "raw", "", "string", "Write the extracted endpoints to a plaintext file.", "")
+		printOption(out, "json", "", "string", "Write the report metadata and resources to a JSON file.", "")
 		printOption(out, "regex", "r", "string", "Only report endpoints matching the provided regular expression (e.g. '^/api/').", "")
 		printOption(out, "burp", "b", "", "Treat the input as a Burp Suite XML export.", "")
 		printOption(out, "cookies", "c", "string", "Include cookies when fetching authenticated JavaScript files.", "")
 		printOption(out, "proxy", "", "string", "Forward HTTP requests through the provided proxy (e.g. http://127.0.0.1:8080).", "")
 		printOption(out, "insecure", "", "", "Skip TLS certificate verification when fetching HTTPS resources.", "")
 		printOption(out, "timeout", "t", "duration", "Maximum time to wait for server responses (e.g. 10s, 1m).", cfg.Timeout.String())
+		printOption(out, "workers", "", "int", "Maximum number of concurrent fetch operations.", strconv.Itoa(cfg.Workers))
+		printOption(out, "max-depth", "", "int", "Maximum recursion depth when using --domain (0 means unlimited).", strconv.Itoa(cfg.MaxDepth))
 	}
 
 	flag.BoolVar(&cfg.Domain, "domain", false, "Recursively parse JavaScript resources discovered on the provided domain.")
@@ -62,6 +73,8 @@ func ParseFlags() (Config, error) {
 	flag.StringVar(&cfg.Raw, "raw", "", "Write the extracted endpoints to a plaintext file.")
 	registerStringAlias("raw-output", "raw", &cfg.Raw)
 
+	flag.StringVar(&cfg.JSON, "json", "", "Write the report metadata and resources to a JSON file.")
+
 	flag.StringVar(&cfg.Regex, "regex", "", "Only report endpoints matching the provided regular expression (e.g. '^/api/').")
 	registerStringAlias("r", "regex", &cfg.Regex)
 
@@ -78,10 +91,21 @@ func ParseFlags() (Config, error) {
 	flag.DurationVar(&cfg.Timeout, "timeout", cfg.Timeout, "Maximum time to wait for server responses (e.g. 10s, 1m).")
 	registerDurationAlias("t", "timeout", &cfg.Timeout)
 
+	flag.IntVar(&cfg.Workers, "workers", cfg.Workers, "Maximum number of concurrent fetch operations.")
+	flag.IntVar(&cfg.MaxDepth, "max-depth", 0, "Maximum recursion depth when using --domain (0 means unlimited).")
+
 	flag.Parse()
 
 	if cfg.Input == "" {
 		return cfg, errors.New("-i/--input is required")
+	}
+
+	if cfg.Workers < 1 {
+		return cfg, errors.New("--workers must be at least 1")
+	}
+
+	if cfg.MaxDepth < 0 {
+		return cfg, errors.New("--max-depth must be at least 0")
 	}
 
 	return cfg, nil
