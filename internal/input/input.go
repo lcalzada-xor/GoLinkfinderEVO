@@ -47,6 +47,13 @@ func ResolveTargets(cfg config.Config) ([]model.Target, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		if targets, ok, err := parseTargetsFromFile(abs); err != nil {
+			return nil, err
+		} else if ok {
+			return targets, nil
+		}
+
 		return []model.Target{{URL: "file://" + abs}}, nil
 	}
 
@@ -112,6 +119,69 @@ func resolveGlob(pattern string) ([]model.Target, error) {
 	}
 
 	return targets, nil
+}
+
+func parseTargetsFromFile(path string) ([]model.Target, bool, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, false, err
+	}
+
+	lines := strings.Split(string(data), "\n")
+	baseDir := filepath.Dir(path)
+	var targets []model.Target
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, "view-source:") {
+			trimmed = strings.TrimSpace(trimmed[12:])
+			if trimmed == "" {
+				continue
+			}
+		}
+
+		if isURLInput(trimmed) {
+			targets = append(targets, model.Target{URL: trimmed})
+			continue
+		}
+
+		candidate := trimmed
+		if !filepath.IsAbs(candidate) {
+			candidate = filepath.Join(baseDir, candidate)
+		}
+
+		info, err := os.Stat(candidate)
+		if err != nil || info.IsDir() {
+			continue
+		}
+
+		abs, err := filepath.Abs(candidate)
+		if err != nil {
+			return nil, false, err
+		}
+		targets = append(targets, model.Target{URL: "file://" + abs})
+	}
+
+	if len(targets) == 0 {
+		return nil, false, nil
+	}
+
+	return targets, true, nil
+}
+
+func isURLInput(value string) bool {
+	lowered := strings.ToLower(value)
+	prefixes := []string{"http://", "https://", "file://", "ftp://", "ftps://"}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(lowered, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // ResolveFilePath resolves a file:// URL to an absolute path and returns its contents.
