@@ -120,7 +120,7 @@ func main() {
 				reportsMu.Unlock()
 
 				if cfg.Domain && task.visited != nil {
-					processDomain(ctx, cfg, task.target.URL, endpoints, task.visited, enqueue)
+					processDomain(ctx, cfg, task.target.URL, endpoints, task.visited, enqueue, task.depth)
 				}
 
 				taskWg.Done()
@@ -129,7 +129,7 @@ func main() {
 	}
 
 	for _, t := range targets {
-		task := resourceTask{target: t}
+		task := resourceTask{target: t, depth: cfg.MaxDepth}
 		if cfg.Domain {
 			task.visited = newVisitedSet()
 		}
@@ -186,9 +186,17 @@ func resolveContent(t model.Target, cfg config.Config) (string, error) {
 }
 
 func processDomain(ctx context.Context, cfg config.Config, baseResource string, endpoints []model.Endpoint, visited *visitedSet,
-	enqueue func(resourceTask)) {
+	enqueue func(resourceTask), depth int) {
 	if visited == nil {
 		return
+	}
+
+	if cfg.MaxDepth > 0 {
+		if depth <= 0 {
+			fmt.Printf("Maximum depth (%d) reached for %s\n", cfg.MaxDepth, baseResource)
+			return
+		}
+		depth--
 	}
 
 	for _, ep := range endpoints {
@@ -213,6 +221,7 @@ func processDomain(ctx context.Context, cfg config.Config, baseResource string, 
 			target:     model.Target{URL: resolved},
 			visited:    visited,
 			fromDomain: true,
+			depth:      depth,
 		})
 	}
 }
@@ -236,6 +245,7 @@ type resourceTask struct {
 	target     model.Target
 	visited    *visitedSet
 	fromDomain bool
+	depth      int
 }
 
 type visitedSet struct {

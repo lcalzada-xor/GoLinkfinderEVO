@@ -13,16 +13,17 @@ import (
 
 // Config contains runtime configuration provided via flags.
 type Config struct {
-	Domain  bool
-	Scope   string
-	Input   string
-	Output  string
-	Raw     string
-	Regex   string
-	Burp    bool
-	Cookies string
-	Timeout time.Duration
-	Workers int
+	Domain   bool
+	Scope    string
+	Input    string
+	Output   string
+	Raw      string
+	Regex    string
+	Burp     bool
+	Cookies  string
+	Timeout  time.Duration
+	Workers  int
+	MaxDepth int
 }
 
 // ParseFlags parses CLI flags into a Config value.
@@ -49,6 +50,7 @@ func ParseFlags() (Config, error) {
 		printOption(out, "cookies", "c", "string", "Include cookies when fetching authenticated JavaScript files.", "")
 		printOption(out, "timeout", "t", "duration", "Maximum time to wait for server responses (e.g. 10s, 1m).", cfg.Timeout.String())
 		printOption(out, "workers", "", "int", "Maximum number of concurrent fetch operations.", strconv.Itoa(cfg.Workers))
+		printOption(out, "max-depth", "", "int", "Maximum recursion depth when using --domain (0 means unlimited).", strconv.Itoa(cfg.MaxDepth))
 	}
 
 	flag.BoolVar(&cfg.Domain, "domain", false, "Recursively parse JavaScript resources discovered on the provided domain.")
@@ -79,6 +81,7 @@ func ParseFlags() (Config, error) {
 	registerDurationAlias("t", "timeout", &cfg.Timeout)
 
 	flag.IntVar(&cfg.Workers, "workers", cfg.Workers, "Maximum number of concurrent fetch operations.")
+	flag.IntVar(&cfg.MaxDepth, "max-depth", 0, "Maximum recursion depth when using --domain (0 means unlimited).")
 
 	flag.Parse()
 
@@ -88,6 +91,10 @@ func ParseFlags() (Config, error) {
 
 	if cfg.Workers < 1 {
 		return cfg, errors.New("--workers must be at least 1")
+	}
+
+	if cfg.MaxDepth < 0 {
+		return cfg, errors.New("--max-depth must be at least 0")
 	}
 
 	return cfg, nil
