@@ -72,3 +72,20 @@ func TestHighlightContext(t *testing.T) {
 		t.Fatalf("highlighted context should contain the link text, got %q", highlighted)
 	}
 }
+
+func TestEndpointRegexMatchesHostnamesWithoutDots(t *testing.T) {
+	content := `'http://localhost:3000/api' "http://my-service/internal"`
+
+	endpoints := FindEndpoints(content, EndpointRegex(), false, nil, false)
+
+	if len(endpoints) != 2 {
+		t.Fatalf("expected 2 endpoints, got %d", len(endpoints))
+	}
+
+	expected := []string{"http://localhost:3000/api", "http://my-service/internal"}
+	for i, ep := range endpoints {
+		if ep.Link != expected[i] {
+			t.Fatalf("unexpected endpoint at index %d: got %q, want %q", i, ep.Link, expected[i])
+		}
+	}
+}
