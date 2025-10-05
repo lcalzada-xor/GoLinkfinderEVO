@@ -115,7 +115,7 @@ func processDomain(cfg config.Config, baseResource string, endpoints []model.End
 
 func render(mode output.Mode, resource string, endpoints []model.Endpoint, builder *strings.Builder) {
 	if mode == output.ModeCLI {
-		output.PrintCLI(endpoints)
+		output.PrintCLI(resource, endpoints)
 		return
 	}
 

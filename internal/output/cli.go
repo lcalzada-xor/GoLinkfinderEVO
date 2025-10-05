@@ -7,8 +7,18 @@ import (
 )
 
 // PrintCLI prints endpoints to stdout in CLI mode.
-func PrintCLI(endpoints []model.Endpoint) {
-	for _, ep := range endpoints {
-		fmt.Println(ep.Link)
+func PrintCLI(resource string, endpoints []model.Endpoint) {
+	fmt.Printf("File: %s\n", resource)
+
+	if len(endpoints) == 0 {
+		fmt.Println("  No endpoints were found.")
+		fmt.Println()
+		return
 	}
+
+	for _, ep := range endpoints {
+		fmt.Printf("  %s\n", ep.Link)
+	}
+
+	fmt.Println()
 }
