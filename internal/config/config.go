@@ -18,6 +18,7 @@ type Config struct {
 	Input    string
 	Output   string
 	Raw      string
+	JSON     string
 	Regex    string
 	Burp     bool
 	Cookies  string
