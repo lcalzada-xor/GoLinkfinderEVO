@@ -112,3 +112,24 @@ func TestEndpointRegexMatchesHostnamesWithoutDots(t *testing.T) {
 		}
 	}
 }
+
+func TestEndpointRegexMatchesExtendedExtensions(t *testing.T) {
+	content := `"/api/handler.php5" '/assets/config.json5' "/configuration/app.config" "../services/process.ashx"`
+
+	endpoints := FindEndpoints(content, EndpointRegex(), false, nil, false)
+
+	expected := map[string]struct{}{
+		"/api/handler.php5":         {},
+		"/assets/config.json5":      {},
+		"/configuration/app.config": {},
+		"../services/process.ashx":  {},
+	}
+
+	for _, ep := range endpoints {
+		delete(expected, ep.Link)
+	}
+
+	if len(expected) != 0 {
+		t.Fatalf("expected endpoints for extended extensions to be matched, missing: %#v", expected)
+	}
+}
