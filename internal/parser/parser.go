@@ -51,10 +51,21 @@ const rawRegex = `
   (?:"|')
 
 `
-
 const contextDelimiter = "\n"
 
-var endpointRegex = regexp.MustCompile(rawRegex)
+var endpointRegex = regexp.MustCompile(compactPattern(rawRegex))
+
+func compactPattern(pattern string) string {
+	var builder strings.Builder
+	for _, line := range strings.Split(pattern, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		builder.WriteString(trimmed)
+	}
+	return builder.String()
+}
 
 // EndpointRegex returns the compiled regex used to detect endpoints.
 func EndpointRegex() *regexp.Regexp {
