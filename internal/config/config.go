@@ -45,6 +45,7 @@ func ParseFlags() (Config, error) {
 		printOption(out, "input", "i", "string", "URL, file or folder to analyse. For folders you can use wildcards (e.g. '/*.js').", "")
 		printOption(out, "output", "o", "string", "Save the HTML report to this path. Leave empty for CLI output.", "")
 		printOption(out, "raw", "", "string", "Write the extracted endpoints to a plaintext file.", "")
+		printOption(out, "json", "", "string", "Write the report metadata and resources to a JSON file.", "")
 		printOption(out, "regex", "r", "string", "Only report endpoints matching the provided regular expression (e.g. '^/api/').", "")
 		printOption(out, "burp", "b", "", "Treat the input as a Burp Suite XML export.", "")
 		printOption(out, "cookies", "c", "string", "Include cookies when fetching authenticated JavaScript files.", "")
@@ -67,6 +68,8 @@ func ParseFlags() (Config, error) {
 
 	flag.StringVar(&cfg.Raw, "raw", "", "Write the extracted endpoints to a plaintext file.")
 	registerStringAlias("raw-output", "raw", &cfg.Raw)
+
+	flag.StringVar(&cfg.JSON, "json", "", "Write the report metadata and resources to a JSON file.")
 
 	flag.StringVar(&cfg.Regex, "regex", "", "Only report endpoints matching the provided regular expression (e.g. '^/api/').")
 	registerStringAlias("r", "regex", &cfg.Regex)

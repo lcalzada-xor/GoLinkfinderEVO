@@ -155,6 +155,12 @@ func main() {
 		}
 	}
 
+	if cfg.JSON != "" {
+		if err := output.WriteJSON(cfg.JSON, reports, meta); err != nil {
+			exitWithError(fmt.Errorf("unable to write JSON output: %w", err))
+		}
+	}
+
 	if mode == output.ModeHTML {
 		if err := output.SaveHTML(htmlBuilder.String(), cfg.Output, meta); err != nil {
 			fmt.Fprintf(os.Stderr, "Output can't be saved in %s due to exception: %v\n", cfg.Output, err)
