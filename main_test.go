@@ -85,6 +85,16 @@ func TestProcessDomainScopeFiltering(t *testing.T) {
 				"https://cdn.example.com/bundle.js",
 			},
 		},
+		{
+			name:    "include subdomains with scheme",
+			scope:   "https://example.com/",
+			include: true,
+			want: []string{
+				"https://example.com/static/app.js",
+				"https://example.com/local.js",
+				"https://cdn.example.com/bundle.js",
+			},
+		},
 	}
 
 	for _, tt := range tests {

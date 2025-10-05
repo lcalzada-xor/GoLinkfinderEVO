@@ -119,6 +119,13 @@ func TestWithinScope(t *testing.T) {
 			want:     true,
 		},
 		{
+			name:     "include subdomain when scope has scheme",
+			resource: "https://cdn.example.com/app.js",
+			scope:    "https://example.com/",
+			include:  true,
+			want:     true,
+		},
+		{
 			name:     "include nested subdomain when enabled",
 			resource: "https://a.b.example.com/app.js",
 			scope:    "example.com",
@@ -129,6 +136,13 @@ func TestWithinScope(t *testing.T) {
 			name:     "subdomain disabled remains out of scope",
 			resource: "https://cdn.example.com/app.js",
 			scope:    "example.com",
+			include:  false,
+			want:     false,
+		},
+		{
+			name:     "subdomain disabled when scope has scheme",
+			resource: "https://cdn.example.com/app.js",
+			scope:    "https://example.com/",
 			include:  false,
 			want:     false,
 		},
