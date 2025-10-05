@@ -191,3 +191,33 @@ func TestBeautifyTimeoutFallback(t *testing.T) {
 		t.Fatalf("beautify took too long to return after timeout: %v", elapsed)
 	}
 }
+
+func TestFindEndpointsRegexTimeoutFallback(t *testing.T) {
+	originalTimeout := regexTimeout
+	originalSearch := regexSearchFunc
+	t.Cleanup(func() {
+		regexTimeout = originalTimeout
+		regexSearchFunc = originalSearch
+	})
+
+	regexTimeout = 10 * time.Millisecond
+	delay := regexTimeout * 10
+
+	regexSearchFunc = func(r *regexp.Regexp, src string) [][]int {
+		time.Sleep(delay)
+		return [][]int{{0, len(src), 0, len(src)}}
+	}
+
+	input := "const value = fetch('/api');"
+	start := time.Now()
+	endpoints := FindEndpoints(input, EndpointRegex(), false, nil, true)
+	elapsed := time.Since(start)
+
+	if len(endpoints) != 0 {
+		t.Fatalf("expected no endpoints when regex search times out, got %d", len(endpoints))
+	}
+
+	if elapsed > regexTimeout*5 {
+		t.Fatalf("regex search took too long to return after timeout: %v", elapsed)
+	}
+}
