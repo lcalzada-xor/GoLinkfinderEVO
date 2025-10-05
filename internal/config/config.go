@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strconv"
 	"time"
 )
@@ -21,11 +22,17 @@ type Config struct {
 	Burp    bool
 	Cookies string
 	Timeout time.Duration
+	Workers int
 }
 
 // ParseFlags parses CLI flags into a Config value.
 func ParseFlags() (Config, error) {
-	cfg := Config{Timeout: 10 * time.Second}
+	defaultWorkers := runtime.NumCPU()
+	if defaultWorkers < 1 {
+		defaultWorkers = 1
+	}
+
+	cfg := Config{Timeout: 10 * time.Second, Workers: defaultWorkers}
 
 	flag.Usage = func() {
 		out := flag.CommandLine.Output()
@@ -41,6 +48,7 @@ func ParseFlags() (Config, error) {
 		printOption(out, "burp", "b", "", "Treat the input as a Burp Suite XML export.", "")
 		printOption(out, "cookies", "c", "string", "Include cookies when fetching authenticated JavaScript files.", "")
 		printOption(out, "timeout", "t", "duration", "Maximum time to wait for server responses (e.g. 10s, 1m).", cfg.Timeout.String())
+		printOption(out, "workers", "", "int", "Maximum number of concurrent fetch operations.", strconv.Itoa(cfg.Workers))
 	}
 
 	flag.BoolVar(&cfg.Domain, "domain", false, "Recursively parse JavaScript resources discovered on the provided domain.")
@@ -70,10 +78,16 @@ func ParseFlags() (Config, error) {
 	flag.DurationVar(&cfg.Timeout, "timeout", cfg.Timeout, "Maximum time to wait for server responses (e.g. 10s, 1m).")
 	registerDurationAlias("t", "timeout", &cfg.Timeout)
 
+	flag.IntVar(&cfg.Workers, "workers", cfg.Workers, "Maximum number of concurrent fetch operations.")
+
 	flag.Parse()
 
 	if cfg.Input == "" {
 		return cfg, errors.New("-i/--input is required")
+	}
+
+	if cfg.Workers < 1 {
+		return cfg, errors.New("--workers must be at least 1")
 	}
 
 	return cfg, nil

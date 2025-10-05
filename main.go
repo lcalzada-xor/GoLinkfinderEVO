@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/example/GoLinkfinderEVO/internal/config"
@@ -47,23 +49,102 @@ func main() {
 	}
 
 	reports := make([]output.ResourceReport, 0, len(targets))
+	var reportsMu sync.Mutex
+	var outputMu sync.Mutex
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	tasks := make(chan resourceTask, cfg.Workers)
+	var taskWg sync.WaitGroup
+	var workerWg sync.WaitGroup
+
+	var firstErr error
+	var errOnce sync.Once
+	recordError := func(err error) {
+		errOnce.Do(func() {
+			firstErr = err
+			cancel()
+		})
+	}
+
+	enqueue := func(task resourceTask) {
+		if ctx.Err() != nil {
+			return
+		}
+
+		taskWg.Add(1)
+		select {
+		case tasks <- task:
+		case <-ctx.Done():
+			taskWg.Done()
+		}
+	}
+
+	for i := 0; i < cfg.Workers; i++ {
+		workerWg.Add(1)
+		go func() {
+			defer workerWg.Done()
+			for task := range tasks {
+				if ctx.Err() != nil {
+					taskWg.Done()
+					continue
+				}
+
+				if task.fromDomain {
+					fmt.Printf("Running against: %s\n\n", task.target.URL)
+				}
+
+				content, err := resolveContent(task.target, cfg)
+				if err != nil {
+					if task.fromDomain {
+						fmt.Printf("Invalid input defined or SSL error for: %s\n", task.target.URL)
+						taskWg.Done()
+						continue
+					}
+
+					recordError(fmt.Errorf("invalid input defined or SSL error: %w", err))
+					taskWg.Done()
+					continue
+				}
+
+				endpoints := parser.FindEndpoints(content, endpointRegex, mode == output.ModeHTML, filterRegex, true)
+				report := output.ResourceReport{Resource: task.target.URL, Endpoints: endpoints}
+
+				outputMu.Lock()
+				render(mode, report, builder)
+				outputMu.Unlock()
+
+				reportsMu.Lock()
+				reports = append(reports, report)
+				reportsMu.Unlock()
+
+				if cfg.Domain && task.visited != nil {
+					processDomain(ctx, cfg, task.target.URL, endpoints, task.visited, enqueue)
+				}
+
+				taskWg.Done()
+			}
+		}()
+	}
 
 	for _, t := range targets {
-		content, err := resolveContent(t, cfg)
-		if err != nil {
-			exitWithError(fmt.Errorf("invalid input defined or SSL error: %w", err))
-		}
-
-		endpoints := parser.FindEndpoints(content, endpointRegex, mode == output.ModeHTML, filterRegex, true)
-
-		report := output.ResourceReport{Resource: t.URL, Endpoints: endpoints}
-		render(mode, report, builder)
-		reports = append(reports, report)
-
+		task := resourceTask{target: t}
 		if cfg.Domain {
-			visited := map[string]struct{}{}
-			processDomain(cfg, t.URL, endpoints, endpointRegex, filterRegex, mode, builder, &reports, visited)
+			task.visited = newVisitedSet()
 		}
+		enqueue(task)
+	}
+
+	go func() {
+		taskWg.Wait()
+		close(tasks)
+	}()
+
+	workerWg.Wait()
+
+	if firstErr != nil {
+		exitWithError(firstErr)
 	}
 
 	meta := output.BuildMetadata(reports, generatedAt)
@@ -104,9 +185,17 @@ func resolveContent(t model.Target, cfg config.Config) (string, error) {
 	return network.Fetch(t.URL, cfg)
 }
 
-func processDomain(cfg config.Config, baseResource string, endpoints []model.Endpoint, regex *regexp.Regexp, filter *regexp.Regexp,
-	mode output.Mode, builder *strings.Builder, reports *[]output.ResourceReport, visited map[string]struct{}) {
+func processDomain(ctx context.Context, cfg config.Config, baseResource string, endpoints []model.Endpoint, visited *visitedSet,
+	enqueue func(resourceTask)) {
+	if visited == nil {
+		return
+	}
+
 	for _, ep := range endpoints {
+		if ctx.Err() != nil {
+			return
+		}
+
 		resolved, ok := network.CheckURL(ep.Link, baseResource)
 		if !ok {
 			continue
@@ -116,30 +205,15 @@ func processDomain(cfg config.Config, baseResource string, endpoints []model.End
 			continue
 		}
 
-		if visited != nil {
-			if _, seen := visited[resolved]; seen {
-				continue
-			}
-			visited[resolved] = struct{}{}
-		}
-
-		fmt.Printf("Running against: %s\n\n", resolved)
-		body, err := network.Fetch(resolved, cfg)
-		if err != nil {
-			fmt.Printf("Invalid input defined or SSL error for: %s\n", resolved)
+		if !visited.Add(resolved) {
 			continue
 		}
 
-		newEndpoints := parser.FindEndpoints(body, regex, mode == output.ModeHTML, filter, true)
-		report := output.ResourceReport{Resource: resolved, Endpoints: newEndpoints}
-		render(mode, report, builder)
-		if reports != nil {
-			*reports = append(*reports, report)
-		}
-
-		if len(newEndpoints) > 0 {
-			processDomain(cfg, resolved, newEndpoints, regex, filter, mode, builder, reports, visited)
-		}
+		enqueue(resourceTask{
+			target:     model.Target{URL: resolved},
+			visited:    visited,
+			fromDomain: true,
+		})
 	}
 }
 
@@ -156,4 +230,30 @@ func exitWithError(err error) {
 	fmt.Fprintf(os.Stderr, "Usage: %s [Options] use -h for help\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	os.Exit(1)
+}
+
+type resourceTask struct {
+	target     model.Target
+	visited    *visitedSet
+	fromDomain bool
+}
+
+type visitedSet struct {
+	mu     sync.Mutex
+	values map[string]struct{}
+}
+
+func newVisitedSet() *visitedSet {
+	return &visitedSet{values: make(map[string]struct{})}
+}
+
+func (v *visitedSet) Add(value string) bool {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	if _, ok := v.values[value]; ok {
+		return false
+	}
+	v.values[value] = struct{}{}
+	return true
 }
