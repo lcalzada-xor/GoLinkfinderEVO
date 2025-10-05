@@ -23,7 +23,28 @@ func main() {
 		exitWithError(err)
 	}
 
-	mode := determineMode(cfg.Output)
+	var mode output.Mode
+	var htmlPath string
+	var jsonPath string
+	var rawPath string
+
+	for _, target := range cfg.Outputs {
+		switch target.Format {
+		case config.OutputCLI:
+			mode |= output.ModeCLI
+		case config.OutputHTML:
+			mode |= output.ModeHTML
+			htmlPath = target.Path
+		case config.OutputJSON:
+			jsonPath = target.Path
+		case config.OutputRaw:
+			rawPath = target.Path
+		}
+	}
+
+	if mode == 0 {
+		mode = output.ModeCLI
+	}
 
 	targets, err := input.ResolveTargets(cfg)
 	if err != nil {
@@ -42,10 +63,9 @@ func main() {
 
 	generatedAt := time.Now()
 
-	var htmlBuilder strings.Builder
-	var builder *strings.Builder
-	if mode == output.ModeHTML {
-		builder = &htmlBuilder
+	var htmlBuilder *strings.Builder
+	if mode.Includes(output.ModeHTML) {
+		htmlBuilder = &strings.Builder{}
 	}
 
 	reports := make([]output.ResourceReport, 0, len(targets))
@@ -108,11 +128,11 @@ func main() {
 					continue
 				}
 
-				endpoints := parser.FindEndpoints(content, endpointRegex, mode == output.ModeHTML, filterRegex, true)
+				endpoints := parser.FindEndpoints(content, endpointRegex, mode.Includes(output.ModeHTML), filterRegex, true)
 				report := output.ResourceReport{Resource: task.target.URL, Endpoints: endpoints}
 
 				outputMu.Lock()
-				render(mode, report, builder)
+				render(mode, report, htmlBuilder)
 				outputMu.Unlock()
 
 				reportsMu.Lock()
@@ -149,34 +169,28 @@ func main() {
 
 	meta := output.BuildMetadata(reports, generatedAt)
 
-	if cfg.Raw != "" {
-		if err := output.WriteRaw(cfg.Raw, reports, meta); err != nil {
+	if rawPath != "" {
+		if err := output.WriteRaw(rawPath, reports, meta); err != nil {
 			exitWithError(fmt.Errorf("unable to write raw output: %w", err))
 		}
 	}
 
-	if cfg.JSON != "" {
-		if err := output.WriteJSON(cfg.JSON, reports, meta); err != nil {
+	if jsonPath != "" {
+		if err := output.WriteJSON(jsonPath, reports, meta); err != nil {
 			exitWithError(fmt.Errorf("unable to write JSON output: %w", err))
 		}
 	}
 
-	if mode == output.ModeHTML {
-		if err := output.SaveHTML(htmlBuilder.String(), cfg.Output, meta); err != nil {
-			fmt.Fprintf(os.Stderr, "Output can't be saved in %s due to exception: %v\n", cfg.Output, err)
+	if mode.Includes(output.ModeHTML) {
+		if err := output.SaveHTML(htmlBuilder.String(), htmlPath, meta); err != nil {
+			fmt.Fprintf(os.Stderr, "Output can't be saved in %s due to exception: %v\n", htmlPath, err)
 			os.Exit(1)
 		}
-		return
 	}
 
-	output.PrintSummary(meta)
-}
-
-func determineMode(outputFlag string) output.Mode {
-	if outputFlag == "" || strings.EqualFold(outputFlag, "cli") {
-		return output.ModeCLI
+	if mode.Includes(output.ModeCLI) {
+		output.PrintSummary(meta)
 	}
-	return output.ModeHTML
 }
 
 func resolveContent(t model.Target, cfg config.Config) (string, error) {
@@ -233,12 +247,13 @@ func processDomain(ctx context.Context, cfg config.Config, baseResource string, 
 }
 
 func render(mode output.Mode, report output.ResourceReport, builder *strings.Builder) {
-	if mode == output.ModeCLI {
+	if mode.Includes(output.ModeCLI) {
 		output.PrintCLI(report)
-		return
 	}
 
-	output.AppendHTML(builder, report)
+	if mode.Includes(output.ModeHTML) && builder != nil {
+		output.AppendHTML(builder, report)
+	}
 }
 
 func exitWithError(err error) {
