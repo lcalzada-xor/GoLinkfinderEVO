@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"time"
@@ -25,9 +26,17 @@ func ParseFlags() (Config, error) {
 	cfg := Config{Timeout: 10 * time.Second}
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s [OPTIONS]\n\n", os.Args[0])
-		fmt.Fprintln(flag.CommandLine.Output(), "Options:")
-		flag.PrintDefaults()
+		out := flag.CommandLine.Output()
+		fmt.Fprintf(out, "Usage: %s [OPTIONS]\n\n", os.Args[0])
+		fmt.Fprintln(out, "Options:")
+
+		printOption(out, "domain", "d", "", "Recursively parse JavaScript resources discovered on the provided domain.", "")
+		printOption(out, "input", "i", "string", "URL, file or folder to analyse. For folders you can use wildcards (e.g. '/*.js').", "")
+		printOption(out, "output", "o", "string", "Save the HTML report to this path. Leave empty for CLI output.", "")
+		printOption(out, "regex", "r", "string", "Only report endpoints matching the provided regular expression (e.g. '^/api/').", "")
+		printOption(out, "burp", "b", "", "Treat the input as a Burp Suite XML export.", "")
+		printOption(out, "cookies", "c", "string", "Include cookies when fetching authenticated JavaScript files.", "")
+		printOption(out, "timeout", "t", "duration", "Maximum time to wait for server responses (e.g. 10s, 1m).", cfg.Timeout.String())
 	}
 
 	flag.BoolVar(&cfg.Domain, "domain", false, "Recursively parse JavaScript resources discovered on the provided domain.")
@@ -70,6 +79,22 @@ func registerBoolAlias(name, canonical string, target *bool) {
 
 func registerDurationAlias(name, canonical string, target *time.Duration) {
 	flag.CommandLine.Var(&durationAlias{target: target}, name, fmt.Sprintf("Alias for --%s", canonical))
+}
+
+func printOption(out io.Writer, primary, alias, value, description, defaultValue string) {
+	line := fmt.Sprintf("  -%s", primary)
+	if alias != "" {
+		line += fmt.Sprintf(" (-%s)", alias)
+	}
+	if value != "" {
+		line += " " + value
+	}
+	if defaultValue != "" {
+		line += fmt.Sprintf(" (default %s)", defaultValue)
+	}
+
+	fmt.Fprintln(out, line)
+	fmt.Fprintf(out, "        %s\n", description)
 }
 
 type stringAlias struct {
