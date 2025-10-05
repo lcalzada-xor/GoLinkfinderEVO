@@ -14,6 +14,9 @@ import (
 )
 
 func TestFetchDeflate(t *testing.T) {
+	resetHTTPClient()
+	t.Cleanup(resetHTTPClient)
+
 	const payload = "compressed content"
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

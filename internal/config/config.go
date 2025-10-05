@@ -21,6 +21,8 @@ type Config struct {
 	Regex    string
 	Burp     bool
 	Cookies  string
+	Proxy    string
+	Insecure bool
 	Timeout  time.Duration
 	Workers  int
 	MaxDepth int
@@ -49,6 +51,8 @@ func ParseFlags() (Config, error) {
 		printOption(out, "regex", "r", "string", "Only report endpoints matching the provided regular expression (e.g. '^/api/').", "")
 		printOption(out, "burp", "b", "", "Treat the input as a Burp Suite XML export.", "")
 		printOption(out, "cookies", "c", "string", "Include cookies when fetching authenticated JavaScript files.", "")
+		printOption(out, "proxy", "", "string", "Forward HTTP requests through the provided proxy (e.g. http://127.0.0.1:8080).", "")
+		printOption(out, "insecure", "", "", "Skip TLS certificate verification when fetching HTTPS resources.", "")
 		printOption(out, "timeout", "t", "duration", "Maximum time to wait for server responses (e.g. 10s, 1m).", cfg.Timeout.String())
 		printOption(out, "workers", "", "int", "Maximum number of concurrent fetch operations.", strconv.Itoa(cfg.Workers))
 		printOption(out, "max-depth", "", "int", "Maximum recursion depth when using --domain (0 means unlimited).", strconv.Itoa(cfg.MaxDepth))
@@ -79,6 +83,10 @@ func ParseFlags() (Config, error) {
 
 	flag.StringVar(&cfg.Cookies, "cookies", "", "Include cookies when fetching authenticated JavaScript files.")
 	registerStringAlias("c", "cookies", &cfg.Cookies)
+
+	flag.StringVar(&cfg.Proxy, "proxy", "", "Forward HTTP requests through the provided proxy (e.g. http://127.0.0.1:8080).")
+
+	flag.BoolVar(&cfg.Insecure, "insecure", false, "Skip TLS certificate verification when fetching HTTPS resources.")
 
 	flag.DurationVar(&cfg.Timeout, "timeout", cfg.Timeout, "Maximum time to wait for server responses (e.g. 10s, 1m).")
 	registerDurationAlias("t", "timeout", &cfg.Timeout)
