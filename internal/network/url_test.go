@@ -1,71 +1,68 @@
 package network
 
-import (
-	"testing"
+import "testing"
 
-	"github.com/example/GoLinkfinderEVO/internal/parser"
-)
-
-func TestCheckURLScriptExtensions(t *testing.T) {
-	defaultExts := []string{".js", ".mjs", ".jsx", ".ts", ".tsx"}
-	parser.SetScriptExtensions(defaultExts)
-	t.Cleanup(func() {
-		parser.SetScriptExtensions(defaultExts)
-	})
-
-	base := "https://example.com/index.html"
-
+func TestCheckURL(t *testing.T) {
 	tests := []struct {
-		name string
-		raw  string
-		ok   bool
-		want string
+		name    string
+		raw     string
+		base    string
+		wantURL string
+		wantOK  bool
 	}{
 		{
-			name: "JavaScript",
-			raw:  "app.js",
-			ok:   true,
-			want: "https://example.com/app.js",
+			name:    "absolute url",
+			raw:     "https://cdn.example.com/app.js",
+			base:    "https://example.com/index.html",
+			wantURL: "https://cdn.example.com/app.js",
+			wantOK:  true,
 		},
 		{
-			name: "ECMAScript module",
-			raw:  "https://cdn.example.com/app.mjs",
-			ok:   true,
-			want: "https://cdn.example.com/app.mjs",
+			name:    "protocol relative",
+			raw:     "//cdn.example.com/app.js",
+			base:    "https://example.com/index.html",
+			wantURL: "https://cdn.example.com/app.js",
+			wantOK:  true,
 		},
 		{
-			name: "JSX with query and fragment",
-			raw:  "/assets/app.jsx?v=1#section",
-			ok:   true,
-			want: "https://example.com/assets/app.jsx?v=1#section",
+			name:    "relative path",
+			raw:     "scripts/app.js",
+			base:    "https://example.com/app/page.html",
+			wantURL: "https://example.com/app/scripts/app.js",
+			wantOK:  true,
 		},
 		{
-			name: "TypeScript",
-			raw:  "//static.example.com/app.ts",
-			ok:   true,
-			want: "https://static.example.com/app.ts",
+			name:   "ignore node_modules",
+			raw:    "/node_modules/jquery.js",
+			base:   "https://example.com/app/page.html",
+			wantOK: false,
 		},
 		{
-			name: "TSX uppercase",
-			raw:  "SCRIPTS/MAIN.TSX",
-			ok:   true,
-			want: "https://example.com/SCRIPTS/MAIN.TSX",
+			name:   "require js extension",
+			raw:    "/styles/app.css",
+			base:   "https://example.com/app/page.html",
+			wantOK: false,
 		},
 		{
-			name: "Non script extension",
-			raw:  "styles.css",
-			ok:   false,
+			name:    "relative with query",
+			raw:     "scripts/app.js?v=1",
+			base:    "https://example.com/app/page.html",
+			wantURL: "https://example.com/app/scripts/app.js?v=1",
+			wantOK:  true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := CheckURL(tt.raw, base)
-			if ok != tt.ok {
-				t.Fatalf("expected ok=%v, got %v (result %q)", tt.ok, ok, got)
+			got, ok := CheckURL(tt.raw, tt.base)
+			if ok != tt.wantOK {
+				t.Fatalf("expected ok=%v, got %v", tt.wantOK, ok)
 			}
-			if ok && got != tt.want {
-				t.Fatalf("expected %q, got %q", tt.want, got)
+			if !tt.wantOK {
+				return
+			}
+			if got != tt.wantURL {
+				t.Fatalf("expected url %q, got %q", tt.wantURL, got)
 			}
 		})
 	}
