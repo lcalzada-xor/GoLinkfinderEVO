@@ -13,19 +13,21 @@ import (
 
 // Config contains runtime configuration provided via flags.
 type Config struct {
-	Domain   bool
-	Scope    string
-	Input    string
-	Output   string
-	Raw      string
-	Regex    string
-	Burp     bool
-	Cookies  string
-	Proxy    string
-	Insecure bool
-	Timeout  time.Duration
-	Workers  int
-	MaxDepth int
+	Domain                 bool
+	Scope                  string
+	ScopeIncludeSubdomains bool
+	Input                  string
+	Output                 string
+	Raw                    string
+	JSON                   string
+	Regex                  string
+	Burp                   bool
+	Cookies                string
+	Proxy                  string
+	Insecure               bool
+	Timeout                time.Duration
+	Workers                int
+	MaxDepth               int
 }
 
 // ParseFlags parses CLI flags into a Config value.
@@ -44,6 +46,7 @@ func ParseFlags() (Config, error) {
 
 		printOption(out, "domain", "d", "", "Recursively parse JavaScript resources discovered on the provided domain.", "")
 		printOption(out, "scope", "s", "string", "Restrict recursive JavaScript fetching to the specified domain (e.g. example.com).", "")
+		printOption(out, "scope-include-subdomains", "", "", "When used with --scope, also allow subdomains of the provided domain.", "")
 		printOption(out, "input", "i", "string", "URL, file or folder to analyse. For folders you can use wildcards (e.g. '/*.js').", "")
 		printOption(out, "output", "o", "string", "Save the HTML report to this path. Leave empty for CLI output.", "")
 		printOption(out, "raw", "", "string", "Write the extracted endpoints to a plaintext file.", "")
@@ -63,6 +66,8 @@ func ParseFlags() (Config, error) {
 
 	flag.StringVar(&cfg.Scope, "scope", "", "Restrict recursive JavaScript fetching to the specified domain (e.g. example.com).")
 	registerStringAlias("s", "scope", &cfg.Scope)
+
+	flag.BoolVar(&cfg.ScopeIncludeSubdomains, "scope-include-subdomains", false, "When used with --scope, also allow subdomains of the provided domain.")
 
 	flag.StringVar(&cfg.Input, "input", "", "URL, file or folder to analyse. For folders you can use wildcards (e.g. '/*.js').")
 	registerStringAlias("i", "input", &cfg.Input)

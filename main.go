@@ -215,7 +215,7 @@ func processDomain(ctx context.Context, cfg config.Config, baseResource string, 
 			continue
 		}
 
-		if cfg.Scope != "" && !network.WithinScope(resolved, cfg.Scope) {
+		if cfg.Scope != "" && !network.WithinScope(resolved, cfg.Scope, cfg.ScopeIncludeSubdomains) {
 			continue
 		}
 

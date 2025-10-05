@@ -73,43 +73,77 @@ func TestWithinScope(t *testing.T) {
 		name     string
 		resource string
 		scope    string
+		include  bool
 		want     bool
 	}{
 		{
 			name:     "matching host with scheme",
 			resource: "https://static.example.com/app.js",
 			scope:    "https://static.example.com",
+			include:  false,
 			want:     true,
 		},
 		{
 			name:     "matching host without scope scheme",
 			resource: "https://example.com/app.js",
 			scope:    "example.com",
+			include:  false,
 			want:     true,
 		},
 		{
 			name:     "different host",
 			resource: "https://cdn.example.com/app.js",
 			scope:    "example.com",
+			include:  false,
 			want:     false,
 		},
 		{
 			name:     "ignore port in resource",
 			resource: "https://example.com:8443/app.js",
 			scope:    "https://example.com",
+			include:  false,
 			want:     true,
 		},
 		{
 			name:     "invalid scope",
 			resource: "https://example.com/app.js",
 			scope:    "://",
+			include:  false,
+			want:     false,
+		},
+		{
+			name:     "include subdomain when enabled",
+			resource: "https://cdn.example.com/app.js",
+			scope:    "example.com",
+			include:  true,
+			want:     true,
+		},
+		{
+			name:     "include nested subdomain when enabled",
+			resource: "https://a.b.example.com/app.js",
+			scope:    "example.com",
+			include:  true,
+			want:     true,
+		},
+		{
+			name:     "subdomain disabled remains out of scope",
+			resource: "https://cdn.example.com/app.js",
+			scope:    "example.com",
+			include:  false,
+			want:     false,
+		},
+		{
+			name:     "suffix that is not a subdomain",
+			resource: "https://badexample.com/app.js",
+			scope:    "example.com",
+			include:  true,
 			want:     false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := WithinScope(tt.resource, tt.scope)
+			got := WithinScope(tt.resource, tt.scope, tt.include)
 			if got != tt.want {
 				t.Fatalf("expected %v, got %v", tt.want, got)
 			}
