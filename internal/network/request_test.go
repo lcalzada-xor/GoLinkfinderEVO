@@ -147,6 +147,45 @@ func TestFetchConcurrentRequests(t *testing.T) {
 	}
 }
 
+func TestBuildTransportRespectsTimeout(t *testing.T) {
+	cfg := config.Config{Timeout: 30 * time.Second}
+
+	transport, err := buildTransport(cfg)
+	if err != nil {
+		t.Fatalf("buildTransport returned error: %v", err)
+	}
+
+	if got, want := transport.TLSHandshakeTimeout, cfg.Timeout; got != want {
+		t.Fatalf("TLSHandshakeTimeout = %v, want %v", got, want)
+	}
+
+	if got, want := transport.ResponseHeaderTimeout, cfg.Timeout; got != want {
+		t.Fatalf("ResponseHeaderTimeout = %v, want %v", got, want)
+	}
+}
+
+func TestBuildTransportZeroTimeout(t *testing.T) {
+	base, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		t.Skip("default transport is not *http.Transport")
+	}
+
+	cfg := config.Config{Timeout: 0}
+
+	transport, err := buildTransport(cfg)
+	if err != nil {
+		t.Fatalf("buildTransport returned error: %v", err)
+	}
+
+	if transport.TLSHandshakeTimeout != base.TLSHandshakeTimeout {
+		t.Fatalf("TLSHandshakeTimeout = %v, want %v", transport.TLSHandshakeTimeout, base.TLSHandshakeTimeout)
+	}
+
+	if transport.ResponseHeaderTimeout != base.ResponseHeaderTimeout {
+		t.Fatalf("ResponseHeaderTimeout = %v, want %v", transport.ResponseHeaderTimeout, base.ResponseHeaderTimeout)
+	}
+}
+
 func TestIsTimeoutError(t *testing.T) {
 	t.Parallel()
 
