@@ -128,6 +128,12 @@ func main() {
 
 				content, err := resolveContent(task.target, cfg)
 				if err != nil {
+					if network.IsTimeoutError(err) {
+						fmt.Printf("Request timed out for: %s\n", task.target.URL)
+						taskWg.Done()
+						continue
+					}
+
 					if task.fromDomain {
 						fmt.Printf("Invalid input defined or SSL error for: %s\n", task.target.URL)
 						taskWg.Done()
