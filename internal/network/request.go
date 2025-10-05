@@ -237,5 +237,10 @@ func IsTimeoutError(err error) bool {
 		return true
 	}
 
+	msg := err.Error()
+	if strings.Contains(msg, "Client.Timeout exceeded") || strings.Contains(msg, "context deadline exceeded") {
+		return true
+	}
+
 	return false
 }
