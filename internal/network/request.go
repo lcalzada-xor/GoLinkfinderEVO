@@ -237,5 +237,16 @@ func IsTimeoutError(err error) bool {
 		return true
 	}
 
+	// Some timeout errors (for example http.Client when waiting for response
+	// headers) wrap the underlying context deadline error but only expose a
+	// descriptive message like "Client.Timeout exceeded while awaiting
+	// headers". In some cases this string can reach the caller without the
+	// wrapped error being detectable by the checks above. As a final
+	// fallback, detect this message to make sure these timeouts are treated
+	// as recoverable conditions.
+	if strings.Contains(err.Error(), "Client.Timeout exceeded") {
+		return true
+	}
+
 	return false
 }

@@ -202,6 +202,7 @@ func TestIsTimeoutError(t *testing.T) {
 		{name: "os timeout", err: os.ErrDeadlineExceeded, want: true},
 		{name: "net timeout", err: errTimeout, want: true},
 		{name: "url error timeout", err: errURL, want: true},
+		{name: "client timeout string", err: errors.New("Get \"https://example.com\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"), want: true},
 		{name: "non timeout", err: errors.New("boom"), want: false},
 	}
 
