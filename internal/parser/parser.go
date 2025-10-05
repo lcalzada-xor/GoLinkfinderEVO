@@ -12,9 +12,7 @@ import (
 	"github.com/example/GoLinkfinderEVO/internal/model"
 )
 
-const rawRegex = `
-
-  (?:"|')
+const endpointBody = `
 
   (
     ((?:[a-zA-Z]{1,10}://|//)
@@ -49,7 +47,17 @@ const rawRegex = `
 
   )
 
-  (?:"|')
+`
+
+const rawRegex = "" +
+	`
+  (?:
+    "` + endpointBody + `"
+    |
+    '` + endpointBody + `'
+    |
+    ` + "`" + endpointBody + "`" + `
+  )
 
 `
 const contextDelimiter = "\n"
@@ -105,7 +113,17 @@ func FindEndpoints(content string, regex *regexp.Regexp, includeContext bool, fi
 		if len(idx) < 4 {
 			continue
 		}
-		linkStart, linkEnd := idx[2], idx[3]
+
+		linkStart, linkEnd := -1, -1
+		for i := 2; i+1 < len(idx); i += 2 {
+			if idx[i] >= 0 && idx[i+1] >= 0 {
+				linkStart, linkEnd = idx[i], idx[i+1]
+				break
+			}
+		}
+		if linkStart == -1 || linkEnd == -1 {
+			continue
+		}
 		matchStart, matchEnd := idx[0], idx[1]
 		if linkStart < 0 || linkEnd < 0 || linkStart > len(processed) || linkEnd > len(processed) {
 			continue
