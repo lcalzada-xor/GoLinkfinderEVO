@@ -1,0 +1,66 @@
+package parser
+
+import (
+	"regexp"
+	"testing"
+)
+
+func TestFindEndpointsWithContextAndFilter(t *testing.T) {
+	content := `fetch("https://example.com/static/app.js");\nconst script = "/assets/test.js";\nconst duplicate = "/assets/test.js";`
+
+	regex := EndpointRegex()
+	filter := regexp.MustCompile(`/assets/`)
+
+	endpoints := FindEndpoints(content, regex, true, filter, true)
+
+	if len(endpoints) != 1 {
+		t.Fatalf("expected 1 endpoint, got %d", len(endpoints))
+	}
+
+	ep := endpoints[0]
+	if ep.Link != "/assets/test.js" {
+		t.Fatalf("unexpected endpoint link: %s", ep.Link)
+	}
+
+	if ep.Context == "" {
+		t.Fatalf("expected context to be populated")
+	}
+
+	if !regexp.MustCompile(`script`).MatchString(ep.Context) {
+		t.Fatalf("expected context to contain surrounding code, got %q", ep.Context)
+	}
+}
+
+func TestFindEndpointsWithoutContext(t *testing.T) {
+	content := `var script = '/js/app.js';`
+	regex := EndpointRegex()
+
+	endpoints := FindEndpoints(content, regex, false, nil, false)
+
+	if len(endpoints) != 1 {
+		t.Fatalf("expected 1 endpoint, got %d", len(endpoints))
+	}
+
+	if endpoints[0].Context != "" {
+		t.Fatalf("expected context to be empty when includeContext is false")
+	}
+}
+
+func TestHighlightContext(t *testing.T) {
+	context := `<script src="/js/app.js?version=1"></script>`
+	link := `/js/app.js?version=1`
+
+	highlighted := HighlightContext(context, link)
+
+	if highlighted == context {
+		t.Fatalf("expected context to be highlighted")
+	}
+
+	if !regexp.MustCompile(`<span style='background-color:yellow'>`).MatchString(highlighted) {
+		t.Fatalf("expected highlight span in context, got %q", highlighted)
+	}
+
+	if !regexp.MustCompile(regexp.QuoteMeta(link)).MatchString(highlighted) {
+		t.Fatalf("highlighted context should contain the link text, got %q", highlighted)
+	}
+}
