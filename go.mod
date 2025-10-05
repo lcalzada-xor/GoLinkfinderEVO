@@ -1,4 +1,4 @@
-module github.com/example/GoLinkfinderEVO
+module github.com/lcalzada-xor/GoLinkfinderEVO
 
 go 1.21
 
