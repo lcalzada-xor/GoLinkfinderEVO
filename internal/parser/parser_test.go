@@ -129,3 +129,32 @@ func TestEndpointRegexSupportsExtendedSchemes(t *testing.T) {
 		}
 	}
 }
+
+func TestEndpointRegexSupportsExtendedFileExtensions(t *testing.T) {
+	content := `"/api/status.php5" '/config/app.config' 
+"/static/app.json5" '/handler/process.ashx'`
+
+	endpoints := FindEndpoints(content, EndpointRegex(), false, nil, false)
+
+	if len(endpoints) != 4 {
+		t.Fatalf("expected 4 endpoints, got %d", len(endpoints))
+	}
+
+	expected := map[string]struct{}{
+		"/api/status.php5":      {},
+		"/config/app.config":    {},
+		"/static/app.json5":     {},
+		"/handler/process.ashx": {},
+	}
+
+	for _, ep := range endpoints {
+		if _, ok := expected[ep.Link]; !ok {
+			t.Fatalf("unexpected endpoint found: %q", ep.Link)
+		}
+		delete(expected, ep.Link)
+	}
+
+	if len(expected) != 0 {
+		t.Fatalf("expected endpoints were not all matched: %#v", expected)
+	}
+}
