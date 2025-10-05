@@ -74,6 +74,10 @@ var rawRegex = buildRawRegex(endpointBody)
 var (
 	beautifyTimeout = 3 * time.Second
 	beautifyFunc    = jsbeautifier.Beautify
+	regexTimeout    = 3 * time.Second
+	regexSearchFunc = func(r *regexp.Regexp, src string) [][]int {
+		return r.FindAllStringSubmatchIndex(src, -1)
+	}
 )
 
 func buildEndpointBody() string {
@@ -154,7 +158,7 @@ func FindEndpoints(content string, regex *regexp.Regexp, includeContext bool, fi
 		processed = beautify(content)
 	}
 
-	matches := regex.FindAllStringSubmatchIndex(processed, -1)
+	matches := findEndpointMatches(regex, processed)
 	if len(matches) == 0 {
 		return nil
 	}
@@ -299,6 +303,25 @@ func HighlightContext(context, link string) string {
 	escapedContext := html.EscapeString(context)
 	escapedLink := html.EscapeString(link)
 	return strings.ReplaceAll(escapedContext, escapedLink, "<mark class='highlight'>"+escapedLink+"</mark>")
+}
+
+func findEndpointMatches(regex *regexp.Regexp, content string) [][]int {
+	if regexTimeout <= 0 {
+		return regexSearchFunc(regex, content)
+	}
+
+	done := make(chan [][]int, 1)
+
+	go func() {
+		done <- regexSearchFunc(regex, content)
+	}()
+
+	select {
+	case matches := <-done:
+		return matches
+	case <-time.After(regexTimeout):
+		return nil
+	}
 }
 
 func mustCompileScriptExtensions(exts []string) *regexp.Regexp {
