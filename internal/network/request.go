@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
+	"context"
 	"crypto/tls"
 	"errors"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -200,4 +202,35 @@ func isRecoverableDecompressionError(err error) bool {
 		errors.Is(err, gzip.ErrChecksum) ||
 		errors.Is(err, zlib.ErrChecksum) ||
 		errors.Is(err, zlib.ErrHeader)
+}
+
+// IsTimeoutError reports whether err represents a timeout condition.
+func IsTimeoutError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+
+	if os.IsTimeout(err) {
+		return true
+	}
+
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return IsTimeoutError(urlErr.Err)
+	}
+
+	type timeout interface {
+		Timeout() bool
+	}
+
+	var t timeout
+	if errors.As(err, &t) && t.Timeout() {
+		return true
+	}
+
+	return false
 }

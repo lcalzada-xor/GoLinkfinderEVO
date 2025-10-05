@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -142,3 +146,38 @@ func TestFetchConcurrentRequests(t *testing.T) {
 		t.Fatalf("expected concurrent requests, max active = %d", maxActive)
 	}
 }
+
+func TestIsTimeoutError(t *testing.T) {
+	t.Parallel()
+
+	errTimeout := mockTimeoutError{}
+	errURL := &url.Error{Err: context.DeadlineExceeded}
+
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{name: "nil", err: nil, want: false},
+		{name: "context deadline", err: context.DeadlineExceeded, want: true},
+		{name: "os timeout", err: os.ErrDeadlineExceeded, want: true},
+		{name: "net timeout", err: errTimeout, want: true},
+		{name: "url error timeout", err: errURL, want: true},
+		{name: "non timeout", err: errors.New("boom"), want: false},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			if got := IsTimeoutError(tc.err); got != tc.want {
+				t.Fatalf("IsTimeoutError(%v) = %v, want %v", tc.err, got, tc.want)
+			}
+		})
+	}
+}
+
+type mockTimeoutError struct{}
+
+func (mockTimeoutError) Error() string   { return "timeout" }
+func (mockTimeoutError) Timeout() bool   { return true }
+func (mockTimeoutError) Temporary() bool { return false }
