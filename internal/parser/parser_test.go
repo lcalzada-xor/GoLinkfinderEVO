@@ -72,3 +72,33 @@ func TestHighlightContext(t *testing.T) {
 		t.Fatalf("highlighted context should contain the link text, got %q", highlighted)
 	}
 }
+
+func TestFindEndpointsWithExtendedSchemes(t *testing.T) {
+	content := `const ext = 'chrome-extension://example.com/path'; const schemaRelative = "//cdn.example.com/script.js";`
+	regex := EndpointRegex()
+
+	endpoints := FindEndpoints(content, regex, false, nil, false)
+
+	if len(endpoints) != 2 {
+		t.Fatalf("expected 2 endpoints, got %d", len(endpoints))
+	}
+
+	foundExt := false
+	foundSchemaRelative := false
+	for _, ep := range endpoints {
+		switch ep.Link {
+		case "chrome-extension://example.com/path":
+			foundExt = true
+		case "//cdn.example.com/script.js":
+			foundSchemaRelative = true
+		}
+	}
+
+	if !foundExt {
+		t.Fatalf("expected to find chrome-extension endpoint in results: %#v", endpoints)
+	}
+
+	if !foundSchemaRelative {
+		t.Fatalf("expected to find schema-relative endpoint in results: %#v", endpoints)
+	}
+}
