@@ -13,21 +13,21 @@ import (
 
 // Config contains runtime configuration provided via flags.
 type Config struct {
-	Domain                 bool
-	Scope                  string
+	Domain   bool
+	Scope    string
+	Input    string
+	Output   string
+	Raw      string
+	JSON     string
+	Regex    string
+	Burp     bool
+	Cookies  string
+	Proxy    string
+	Insecure bool
+	Timeout  time.Duration
+	Workers  int
+	MaxDepth int
 	ScopeIncludeSubdomains bool
-	Input                  string
-	Output                 string
-	Raw                    string
-	JSON                   string
-	Regex                  string
-	Burp                   bool
-	Cookies                string
-	Proxy                  string
-	Insecure               bool
-	Timeout                time.Duration
-	Workers                int
-	MaxDepth               int
 }
 
 // ParseFlags parses CLI flags into a Config value.
