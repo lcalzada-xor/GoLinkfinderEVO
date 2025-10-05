@@ -39,7 +39,10 @@ func ResolveTargets(cfg config.Config) ([]model.Target, error) {
 		return resolveGlob(input)
 	}
 
-	if _, err := os.Stat(input); err == nil {
+	if info, err := os.Stat(input); err == nil {
+		if info.IsDir() {
+			return nil, errors.New("directories require a wildcard (e.g. dir/*.js)")
+		}
 		abs, err := filepath.Abs(input)
 		if err != nil {
 			return nil, err
