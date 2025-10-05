@@ -66,6 +66,11 @@ func buildTransport(cfg config.Config) (*http.Transport, error) {
 
 	transport := base.Clone()
 
+	if cfg.Timeout > 0 {
+		transport.TLSHandshakeTimeout = cfg.Timeout
+		transport.ResponseHeaderTimeout = cfg.Timeout
+	}
+
 	if cfg.Proxy != "" {
 		proxyURL, err := url.Parse(cfg.Proxy)
 		if err != nil {
