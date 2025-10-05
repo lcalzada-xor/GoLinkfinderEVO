@@ -49,6 +49,51 @@ func TestResolveTargetsFile(t *testing.T) {
 	}
 }
 
+func TestResolveTargetsListFile(t *testing.T) {
+	dir := t.TempDir()
+
+	localFile := filepath.Join(dir, "local.js")
+	if err := os.WriteFile(localFile, []byte("console.log('local');"), 0o644); err != nil {
+		t.Fatalf("write local file: %v", err)
+	}
+
+	listPath := filepath.Join(dir, "targets.txt")
+	content := strings.Join([]string{
+		"https://example.com/app.js",
+		"# comment",
+		filepath.Base(localFile),
+		"",
+		"view-source:https://example.com/another.js",
+	}, "\n")
+	if err := os.WriteFile(listPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("write list file: %v", err)
+	}
+
+	cfg := config.Config{Input: listPath}
+	targets, err := ResolveTargets(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(targets) != 3 {
+		t.Fatalf("expected 3 targets, got %d", len(targets))
+	}
+
+	wantFirst := "https://example.com/app.js"
+	if targets[0].URL != wantFirst {
+		t.Fatalf("expected first target %q, got %q", wantFirst, targets[0].URL)
+	}
+
+	wantThird := "https://example.com/another.js"
+	if targets[2].URL != wantThird {
+		t.Fatalf("expected third target %q, got %q", wantThird, targets[2].URL)
+	}
+
+	if !strings.HasPrefix(targets[1].URL, "file://") {
+		t.Fatalf("expected second target to reference local file, got %q", targets[1].URL)
+	}
+}
+
 func TestResolveTargetsGlob(t *testing.T) {
 	dir := t.TempDir()
 	files := []string{"a.js", "b.js", "ignore.txt"}
