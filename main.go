@@ -96,9 +96,20 @@ func main() {
 		taskWg.Add(1)
 		select {
 		case tasks <- task:
+			return
 		case <-ctx.Done():
 			taskWg.Done()
+			return
+		default:
 		}
+
+		go func() {
+			select {
+			case tasks <- task:
+			case <-ctx.Done():
+				taskWg.Done()
+			}
+		}()
 	}
 
 	for i := 0; i < cfg.Workers; i++ {
