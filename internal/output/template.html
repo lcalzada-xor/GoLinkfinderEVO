@@ -3,43 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GoLinkfinderEVO Output</title>
+    <title>GoLinkfinderEVO Results</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #1e1e1e;
-            color: #f0f0f0;
-            margin: 0;
-            padding: 2rem;
+        :root {
+            color-scheme: dark;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
         }
-        h1 {
-            color: #61dafb;
-            font-size: 1.5rem;
+
+        body {
+            margin: 0;
+            padding: 0 1.5rem 3rem;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            padding: 2.5rem 0 1.5rem;
+        }
+
+        .page-header h1 {
+            margin: 0;
+            font-size: 2.25rem;
+            color: #38bdf8;
+        }
+
+        .page-header p {
+            margin: 0.75rem 0 0;
+            color: #94a3b8;
+        }
+
+        .summary-grid {
+            margin-top: 1.5rem;
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+
+        .summary-card {
+            background: rgba(148, 163, 184, 0.12);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .summary-label {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #cbd5f5;
+        }
+
+        .summary-value {
+            font-size: 1.75rem;
+            font-weight: 600;
+        }
+
+        .results {
             margin-top: 2rem;
         }
-        a.text {
-            color: #ffd700;
+
+        .resource {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 14px;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            box-shadow: 0 18px 35px rgba(15, 23, 42, 0.45);
+        }
+
+        .resource-header {
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.16), rgba(59, 130, 246, 0.08));
+        }
+
+        .resource-title {
+            margin: 0;
+            font-size: 1.25rem;
+        }
+
+        .resource-title a {
+            color: #f8fafc;
             text-decoration: none;
             word-break: break-all;
         }
-        a.text:hover {
+
+        .resource-title a:hover {
             text-decoration: underline;
         }
-        .container {
-            background-color: #2b2b2b;
-            border-radius: 8px;
-            margin: 0.5rem 0 1.5rem;
-            padding: 1rem;
-            white-space: pre-wrap;
-            word-break: break-word;
+
+        .badge {
+            background: rgba(14, 165, 233, 0.2);
+            color: #bae6fd;
+            border-radius: 999px;
+            padding: 0.3rem 0.9rem;
+            font-size: 0.85rem;
+            font-weight: 600;
         }
-        span {
-            font-weight: bold;
+
+        .resource-empty {
+            margin: 0;
+            padding: 1.5rem;
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        .endpoint-list {
+            list-style: none;
+            padding: 0 1.5rem 1.5rem;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .endpoint-item {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .endpoint-header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .endpoint-index {
+            background: rgba(168, 85, 247, 0.2);
+            color: #e9d5ff;
+            border-radius: 999px;
+            padding: 0.2rem 0.7rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .endpoint-link {
+            color: #fbbf24;
+            text-decoration: none;
+            word-break: break-all;
+            flex: 1 1 auto;
+        }
+
+        .endpoint-link:hover {
+            text-decoration: underline;
+        }
+
+        .copy-button {
+            background: rgba(59, 130, 246, 0.25);
+            color: #e2e8f0;
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            border-radius: 8px;
+            padding: 0.45rem 0.9rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .copy-button:hover {
+            background: rgba(59, 130, 246, 0.45);
+            transform: translateY(-1px);
+        }
+
+        .copy-button.copied {
+            background: rgba(34, 197, 94, 0.45);
+            border-color: rgba(34, 197, 94, 0.6);
+        }
+
+        .endpoint-context {
+            margin: 0;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.75);
+            border-radius: 10px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #cbd5f5;
+        }
+
+        .endpoint-context code {
+            font-family: 'Fira Code', 'Source Code Pro', monospace;
+            white-space: pre-wrap;
+        }
+
+        mark.highlight {
+            background: rgba(250, 204, 21, 0.45);
+            border-radius: 4px;
+            padding: 0 0.1rem;
+        }
+
+        .empty-state {
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.18);
+            color: #64748b;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        @media (max-width: 640px) {
+            .page-header {
+                padding-top: 2rem;
+            }
+
+            .resource-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .endpoint-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .copy-button {
+                align-self: flex-end;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>GoLinkfinderEVO Results</h1>
-    {{.Content}}
+    <main>
+        <header class="page-header">
+            <h1>GoLinkfinderEVO Results</h1>
+            <p>Generated at {{.GeneratedAt}}</p>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <span class="summary-label">Resources scanned</span>
+                    <span class="summary-value">{{.TotalResources}}</span>
+                </div>
+                <div class="summary-card">
+                    <span class="summary-label">Endpoints discovered</span>
+                    <span class="summary-value">{{.TotalEndpoints}}</span>
+                </div>
+            </div>
+        </header>
+
+        <section class="results">
+            {{if .HasResults}}
+                {{.Content}}
+            {{else}}
+                <p class="empty-state">No resources were processed.</p>
+            {{end}}
+        </section>
+
+        <footer>
+            Report generated by GoLinkfinderEVO.
+        </footer>
+    </main>
+
+    <script>
+        document.addEventListener('click', function (event) {
+            const button = event.target.closest('[data-copy]');
+            if (!button) {
+                return;
+            }
+
+            const value = button.getAttribute('data-copy');
+            if (!value) {
+                return;
+            }
+
+            navigator.clipboard.writeText(value).then(() => {
+                const original = button.textContent;
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
+                setTimeout(() => {
+                    button.textContent = original;
+                    button.classList.remove('copied');
+                }, 1600);
+            }).catch(() => {
+                const original = button.textContent;
+                button.textContent = 'Press Ctrl+C';
+                setTimeout(() => {
+                    button.textContent = original;
+                }, 1600);
+            });
+        });
+    </script>
 </body>
 </html>
