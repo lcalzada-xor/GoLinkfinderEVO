@@ -20,8 +20,6 @@ func main() {
 		exitWithError(err)
 	}
 
-	cfg.Input = strings.TrimSuffix(cfg.Input, "/")
-
 	mode := determineMode(cfg.Output)
 
 	targets, err := input.ResolveTargets(cfg)
@@ -50,7 +48,8 @@ func main() {
 		endpoints := parser.FindEndpoints(content, endpointRegex, mode == output.ModeHTML, filterRegex, true)
 
 		if cfg.Domain {
-			processDomain(cfg, endpoints, endpointRegex, filterRegex, mode, &outputBuilder)
+			visited := map[string]struct{}{}
+			processDomain(cfg, t.URL, endpoints, endpointRegex, filterRegex, mode, &outputBuilder, visited)
 		}
 
 		render(mode, t.URL, endpoints, &outputBuilder)
@@ -65,7 +64,7 @@ func main() {
 }
 
 func determineMode(outputFlag string) output.Mode {
-	if strings.EqualFold(outputFlag, "cli") {
+	if outputFlag == "" || strings.EqualFold(outputFlag, "cli") {
 		return output.ModeCLI
 	}
 	return output.ModeHTML
@@ -83,11 +82,19 @@ func resolveContent(t model.Target, cfg config.Config) (string, error) {
 	return network.Fetch(t.URL, cfg)
 }
 
-func processDomain(cfg config.Config, endpoints []model.Endpoint, regex *regexp.Regexp, filter *regexp.Regexp, mode output.Mode, builder *strings.Builder) {
+func processDomain(cfg config.Config, baseResource string, endpoints []model.Endpoint, regex *regexp.Regexp, filter *regexp.Regexp,
+	mode output.Mode, builder *strings.Builder, visited map[string]struct{}) {
 	for _, ep := range endpoints {
-		resolved, ok := network.CheckURL(ep.Link, cfg.Input)
+		resolved, ok := network.CheckURL(ep.Link, baseResource)
 		if !ok {
 			continue
+		}
+
+		if visited != nil {
+			if _, seen := visited[resolved]; seen {
+				continue
+			}
+			visited[resolved] = struct{}{}
 		}
 
 		fmt.Printf("Running against: %s\n\n", resolved)
@@ -99,6 +106,10 @@ func processDomain(cfg config.Config, endpoints []model.Endpoint, regex *regexp.
 
 		newEndpoints := parser.FindEndpoints(body, regex, mode == output.ModeHTML, filter, true)
 		render(mode, resolved, newEndpoints, builder)
+
+		if len(newEndpoints) > 0 {
+			processDomain(cfg, resolved, newEndpoints, regex, filter, mode, builder, visited)
+		}
 	}
 }
 
