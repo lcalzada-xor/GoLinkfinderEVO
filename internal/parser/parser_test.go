@@ -54,6 +54,41 @@ func TestFindEndpointsWithoutContext(t *testing.T) {
 	}
 }
 
+func TestFindEndpointsWithExtendedExtensions(t *testing.T) {
+	content := `const urls = ["/api/user.php5", "/static/data.json5?cache=1", "config.ashx", "settings.config"];`
+	regex := EndpointRegex()
+
+	endpoints := FindEndpoints(content, regex, false, nil, false)
+
+	expected := map[string]bool{
+		"/api/user.php5":             false,
+		"/static/data.json5?cache=1": false,
+		"config.ashx":                false,
+		"settings.config":            false,
+	}
+
+	if len(endpoints) != len(expected) {
+		t.Fatalf("expected %d endpoints, got %d", len(expected), len(endpoints))
+	}
+
+	for _, ep := range endpoints {
+		seen, ok := expected[ep.Link]
+		if !ok {
+			t.Fatalf("unexpected endpoint %q", ep.Link)
+		}
+		if seen {
+			t.Fatalf("endpoint %q reported multiple times", ep.Link)
+		}
+		expected[ep.Link] = true
+	}
+
+	for link, seen := range expected {
+		if !seen {
+			t.Fatalf("expected to find endpoint %q", link)
+		}
+	}
+}
+
 func TestHighlightContext(t *testing.T) {
 	context := `<script src="/js/app.js?version=1"></script>`
 	link := `/js/app.js?version=1`

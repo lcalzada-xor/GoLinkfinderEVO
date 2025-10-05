@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"html"
 	"regexp"
 	"sort"
@@ -12,7 +13,29 @@ import (
 	"github.com/example/GoLinkfinderEVO/internal/model"
 )
 
-const rawRegex = `
+// endpointFileExtensions enumerates the most common file extensions that should be captured
+// as potential endpoints. Keeping the list centralized makes it straightforward to extend or
+// document newly supported types.
+var endpointFileExtensions = []string{
+	"php",
+	"php5",
+	"asp",
+	"aspx",
+	"jsp",
+	"json",
+	"json5",
+	"action",
+	"html",
+	"js",
+	"txt",
+	"xml",
+	"config",
+	"ashx",
+}
+
+var endpointFileExtensionPattern = strings.Join(endpointFileExtensions, "|")
+
+const rawRegexTemplate = `
 
   (?:"|')
 
@@ -31,7 +54,7 @@ const rawRegex = `
 
     ([a-zA-Z0-9_\-/]{1,}/
     [a-zA-Z0-9_\-/.]{1,}
-    \.(?:[a-zA-Z]{1,4}|action)
+    \.(?:[a-zA-Z0-9-]{1,6}|%s)
     (?:[\?|#][^"|']{0,}|))
 
     |
@@ -43,8 +66,7 @@ const rawRegex = `
     |
 
     ([a-zA-Z0-9_\-]{1,}
-    \.(?:php|asp|aspx|jsp|json|
-         action|html|js|txt|xml)
+    \.(?:%s)
     (?:[\?|#][^"|']{0,}|))
 
   )
@@ -52,6 +74,9 @@ const rawRegex = `
   (?:"|')
 
 `
+
+var rawRegex = fmt.Sprintf(rawRegexTemplate, endpointFileExtensionPattern, endpointFileExtensionPattern)
+
 const contextDelimiter = "\n"
 
 var endpointRegex = regexp.MustCompile(compactPattern(rawRegex))
