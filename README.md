@@ -56,7 +56,7 @@ Or run directly with `go run .` if you prefer not to build a binary.
 ### Basic usage
 
 ```bash
-go run . -i https://target.com -o report.html
+go run . -i https://target.com --output html=report.html
 ```
 
 This command crawls `https://target.com`, prints discovered endpoints to stdout, and saves an interactive HTML report to `report.html`.
@@ -68,7 +68,10 @@ This command crawls `https://target.com`, prints discovered endpoints to stdout,
 go run . -i ./static/app.js --regex api --raw api-endpoints.txt
 
 # Enumerate a target through Burp, include subdomains, and output JSON for further scripting
-go run . -i https://scope.example --scope example --scope-include-subdomains --proxy http://127.0.0.1:8080 --json findings.json
+go run . -i https://scope.example --scope example --scope-include-subdomains --proxy http://127.0.0.1:8080 --output json=findings.json
+
+# Crawl a domain and emit CLI, HTML, and JSON outputs simultaneously
+go run . -i https://target.com --output cli,html=report.html,json=findings.json
 
 # Import historical data from a Burp Suite XML export
 go run . -b ./traffic-export.xml --workers 20
@@ -80,9 +83,9 @@ go run . -b ./traffic-export.xml --workers 20
 | ---- | ----------- |
 | `-i, --input` | URL, file, glob pattern, or directory to scan. |
 | `-b, --burp` | Parse Burp Suite XML exports as input. |
-| `-o` | Write an HTML report to the specified file. |
-| `--raw` | Export a newline-delimited list of matches. |
-| `--json` | Save metadata, responses, and matches as JSON. |
+| `-o, --output` | Configure outputs. Accepts values like `cli`, `html=report.html`, `json=findings.json`, or `raw=endpoints.txt`. Repeat or comma-separate to combine formats. |
+| `--raw` | Alias for `--output raw=<file>`. |
+| `--json` | Alias for `--output json=<file>`. |
 | `--regex` | Apply an additional regex filter to matches. |
 | `--domain` | Restrict results to the input domain only. |
 | `--scope` | Supply a custom allow-list of domains. |
