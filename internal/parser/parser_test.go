@@ -3,6 +3,9 @@ package parser
 import (
 	"regexp"
 	"testing"
+	"time"
+
+	"github.com/ditashi/jsbeautifier-go/optargs"
 )
 
 func TestFindEndpointsWithContextAndFilter(t *testing.T) {
@@ -156,5 +159,35 @@ func TestEndpointRegexSupportsExtendedFileExtensions(t *testing.T) {
 
 	if len(expected) != 0 {
 		t.Fatalf("expected endpoints were not all matched: %#v", expected)
+	}
+}
+
+func TestBeautifyTimeoutFallback(t *testing.T) {
+	originalFunc := beautifyFunc
+	originalTimeout := beautifyTimeout
+	t.Cleanup(func() {
+		beautifyFunc = originalFunc
+		beautifyTimeout = originalTimeout
+	})
+
+	beautifyTimeout = 10 * time.Millisecond
+	delay := beautifyTimeout * 10
+
+	beautifyFunc = func(src *string, _ optargs.MapType) (string, error) {
+		time.Sleep(delay)
+		return "beautified", nil
+	}
+
+	input := "const value = fetch('/api');"
+	start := time.Now()
+	result := beautify(input)
+	elapsed := time.Since(start)
+
+	if result != input {
+		t.Fatalf("expected original content when beautifier times out, got %q", result)
+	}
+
+	if elapsed > beautifyTimeout*5 {
+		t.Fatalf("beautify took too long to return after timeout: %v", elapsed)
 	}
 }
