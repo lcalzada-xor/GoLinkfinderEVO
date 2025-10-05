@@ -3,6 +3,7 @@ package parser
 import (
 	"html"
 	"regexp"
+	"sort"
 	"strings"
 
 	jsbeautifier "github.com/ditashi/jsbeautifier-go/jsbeautifier"
@@ -55,6 +56,8 @@ const contextDelimiter = "\n"
 
 var endpointRegex = regexp.MustCompile(compactPattern(rawRegex))
 
+var scriptExtensionRegex = mustCompileScriptExtensions([]string{".js", ".mjs", ".jsx", ".ts", ".tsx"})
+
 func compactPattern(pattern string) string {
 	var builder strings.Builder
 	for _, line := range strings.Split(pattern, "\n") {
@@ -70,6 +73,17 @@ func compactPattern(pattern string) string {
 // EndpointRegex returns the compiled regex used to detect endpoints.
 func EndpointRegex() *regexp.Regexp {
 	return endpointRegex
+}
+
+// ScriptExtensionRegex returns the compiled regex used to validate script file extensions.
+func ScriptExtensionRegex() *regexp.Regexp {
+	return scriptExtensionRegex
+}
+
+// SetScriptExtensions configures the extensions considered as scripts.
+// Extensions can be provided with or without a leading dot and are matched case-insensitively.
+func SetScriptExtensions(exts []string) {
+	scriptExtensionRegex = mustCompileScriptExtensions(exts)
 }
 
 // FindEndpoints extracts endpoints from the provided content.
@@ -178,4 +192,40 @@ func HighlightContext(context, link string) string {
 	escapedLink := html.EscapeString(link)
 	highlight := strings.ReplaceAll(escapedContext, escapedLink, "<span style='background-color:yellow'>"+escapedLink+"</span>")
 	return highlight
+}
+
+func mustCompileScriptExtensions(exts []string) *regexp.Regexp {
+	if len(exts) == 0 {
+		return regexp.MustCompile(`(?i)\.(?:js)$`)
+	}
+
+	normalized := make([]string, 0, len(exts))
+	for _, ext := range exts {
+		ext = strings.TrimSpace(ext)
+		if ext == "" {
+			continue
+		}
+		if !strings.HasPrefix(ext, ".") {
+			ext = "." + ext
+		}
+		normalized = append(normalized, strings.ToLower(ext))
+	}
+
+	if len(normalized) == 0 {
+		return regexp.MustCompile(`(?i)\.(?:js)$`)
+	}
+
+	sort.Strings(normalized)
+
+	builder := strings.Builder{}
+	builder.WriteString(`(?i)(?:`)
+	for idx, ext := range normalized {
+		if idx > 0 {
+			builder.WriteString(`|`)
+		}
+		builder.WriteString(regexp.QuoteMeta(ext))
+	}
+	builder.WriteString(`)$`)
+
+	return regexp.MustCompile(builder.String())
 }

@@ -4,6 +4,8 @@ import (
 	"net/url"
 	"path"
 	"strings"
+
+	"github.com/example/GoLinkfinderEVO/internal/parser"
 )
 
 // CheckURL validates a JS endpoint and resolves it to an absolute URL based on the provided base.
@@ -19,7 +21,7 @@ func CheckURL(raw, base string) (string, bool) {
 	}
 
 	lowerTrimmed := strings.ToLower(trimmed)
-	if !strings.HasSuffix(lowerTrimmed, ".js") {
+	if !parser.ScriptExtensionRegex().MatchString(lowerTrimmed) {
 		return "", false
 	}
 
