@@ -54,6 +54,29 @@ func TestFindEndpointsWithoutContext(t *testing.T) {
 	}
 }
 
+func TestFindEndpointsWithBacktickDelimiters(t *testing.T) {
+	content := "const users = fetch(`/api/users`);\nconst posts = fetch('/api/posts');"
+	regex := EndpointRegex()
+
+	endpoints := FindEndpoints(content, regex, false, nil, false)
+
+	if len(endpoints) != 2 {
+		t.Fatalf("expected 2 endpoints, got %d", len(endpoints))
+	}
+
+	links := map[string]struct{}{}
+	for _, ep := range endpoints {
+		links[ep.Link] = struct{}{}
+	}
+
+	if _, ok := links["/api/users"]; !ok {
+		t.Fatalf("expected to find /api/users endpoint in results: %#v", links)
+	}
+	if _, ok := links["/api/posts"]; !ok {
+		t.Fatalf("expected to find /api/posts endpoint in results: %#v", links)
+	}
+}
+
 func TestHighlightContext(t *testing.T) {
 	context := `<script src="/js/app.js?version=1"></script>`
 	link := `/js/app.js?version=1`
