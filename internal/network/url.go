@@ -5,7 +5,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/example/GoLinkfinderEVO/internal/parser"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/parser"
 )
 
 // CheckURL validates a JS endpoint and resolves it to an absolute URL based on the provided base.

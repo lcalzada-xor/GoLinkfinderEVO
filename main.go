@@ -9,12 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/example/GoLinkfinderEVO/internal/config"
-	"github.com/example/GoLinkfinderEVO/internal/input"
-	"github.com/example/GoLinkfinderEVO/internal/model"
-	"github.com/example/GoLinkfinderEVO/internal/network"
-	"github.com/example/GoLinkfinderEVO/internal/output"
-	"github.com/example/GoLinkfinderEVO/internal/parser"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/config"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/input"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/model"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/network"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/output"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/parser"
 )
 
 func main() {

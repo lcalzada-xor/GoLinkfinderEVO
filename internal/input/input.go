@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/example/GoLinkfinderEVO/internal/config"
-	"github.com/example/GoLinkfinderEVO/internal/model"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/config"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/model"
 )
 
 // ResolveTargets returns the list of targets to evaluate based on the provided configuration.

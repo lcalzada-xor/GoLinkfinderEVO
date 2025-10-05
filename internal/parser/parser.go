@@ -10,7 +10,7 @@ import (
 	jsbeautifier "github.com/ditashi/jsbeautifier-go/jsbeautifier"
 	"github.com/ditashi/jsbeautifier-go/optargs"
 
-	"github.com/example/GoLinkfinderEVO/internal/model"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/model"
 )
 
 const generalExtensionPattern = `[a-zA-Z0-9-]{1,6}`

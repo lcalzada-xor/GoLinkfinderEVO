@@ -5,8 +5,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/example/GoLinkfinderEVO/internal/config"
-	"github.com/example/GoLinkfinderEVO/internal/model"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/config"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/model"
 )
 
 func TestProcessDomainMaxDepth(t *testing.T) {

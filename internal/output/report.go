@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/example/GoLinkfinderEVO/internal/model"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/model"
 )
 
 // ResourceReport describes the endpoints discovered for a single resource.

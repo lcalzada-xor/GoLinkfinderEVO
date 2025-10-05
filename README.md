@@ -44,7 +44,7 @@ Use GoLinkFinder EVO to supercharge your bug bounty methodology, automate URL di
 ### Quick install
 
 ```bash
-git clone https://github.com/example/GoLinkfinderEVO.git
+git clone https://github.com/lcalzada-xor/GoLinkfinderEVO.git
 cd GoLinkfinderEVO
 go build -o golinkfinder
 # Optional: add to PATH
@@ -132,7 +132,7 @@ Before submitting a PR:
 ## Community & support
 
 - ⭐ **Like the project?** Star the repository to support continued development.
-- 🐛 **Found an issue?** [Open a GitHub issue](https://github.com/example/GoLinkfinderEVO/issues) with details.
+- 🐛 **Found an issue?** [Open a GitHub issue](https://github.com/lcalzada-xor/GoLinkfinderEVO/issues) with details.
 - 💬 **Need help?** Start a discussion or reach out on security forums and Discord communities.
 - 📰 **Stay updated:** Watch the repo for release announcements and new features.
 

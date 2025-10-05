@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/GoLinkfinderEVO/internal/config"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/config"
 )
 
 func TestFetchDeflate(t *testing.T) {

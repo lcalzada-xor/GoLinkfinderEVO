@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/GoLinkfinderEVO/internal/model"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/model"
 )
 
 func TestWriteJSON(t *testing.T) {

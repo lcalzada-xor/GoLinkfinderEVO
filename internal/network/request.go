@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/example/GoLinkfinderEVO/internal/config"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/config"
 )
 
 type clientSettings struct {

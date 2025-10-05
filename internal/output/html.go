@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/example/GoLinkfinderEVO/internal/parser"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/parser"
 )
 
 // AppendHTML appends the HTML representation of the endpoints for a resource.
