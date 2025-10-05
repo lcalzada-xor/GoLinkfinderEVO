@@ -74,3 +74,36 @@ func CheckURL(raw, base string) (string, bool) {
 
 	return resolved.String(), true
 }
+
+// WithinScope reports whether the provided resource URL belongs to the supplied scope domain.
+// The scope can be provided with or without a scheme (e.g. "https://example.com" or "example.com").
+func WithinScope(resource, scope string) bool {
+	if scope == "" {
+		return true
+	}
+
+	parsedResource, err := url.Parse(resource)
+	if err != nil {
+		return false
+	}
+
+	resourceHost := parsedResource.Hostname()
+	if resourceHost == "" {
+		return false
+	}
+
+	parsedScope, err := url.Parse(scope)
+	if err != nil || parsedScope.Hostname() == "" {
+		parsedScope, err = url.Parse("https://" + scope)
+		if err != nil {
+			return false
+		}
+	}
+
+	scopeHost := parsedScope.Hostname()
+	if scopeHost == "" {
+		return false
+	}
+
+	return strings.EqualFold(resourceHost, scopeHost)
+}

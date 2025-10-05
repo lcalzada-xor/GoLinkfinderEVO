@@ -4,7 +4,7 @@ Implementation of the original LinkFinder utility in Go.
 ## Usage
 
 ```bash
-go run . -i <target> [-o output.html] [--regex <filter>] [--domain] [--cookies <cookie-string>] [--timeout <seconds>]
+go run . -i <target> [-o output.html] [--regex <filter>] [--domain] [--scope <domain>] [--cookies <cookie-string>] [--timeout <seconds>]
 ```
 
 The tool now prints matches to stdout in raw format by default. Provide `-o <file.html>` if you want to save the HTML report instead. The program accepts the same kinds of inputs as the Python version, including URLs, local files, wildcards and Burp XML exports (`-b`).
