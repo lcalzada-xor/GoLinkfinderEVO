@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	jsbeautifier "github.com/ditashi/jsbeautifier-go/jsbeautifier"
 	"github.com/ditashi/jsbeautifier-go/optargs"
@@ -69,6 +70,11 @@ const endpointBodyTemplate = `
 var endpointBody = buildEndpointBody()
 
 var rawRegex = buildRawRegex(endpointBody)
+
+var (
+	beautifyTimeout = 3 * time.Second
+	beautifyFunc    = jsbeautifier.Beautify
+)
 
 func buildEndpointBody() string {
 	specificPattern := buildSpecificExtensionsPattern(defaultSpecificExtensions)
@@ -255,13 +261,37 @@ func beautify(content string) string {
 		return replacer.Replace(content)
 	}
 
-	options := optargs.MapType{}
-	options.Copy(optargs.MapType(jsbeautifier.DefaultOptions()))
-	result, err := jsbeautifier.Beautify(&content, options)
-	if err != nil {
+	if beautifyTimeout <= 0 {
 		return content
 	}
-	return result
+
+	type result struct {
+		value string
+		ok    bool
+	}
+
+	done := make(chan result, 1)
+
+	go func(input string) {
+		options := optargs.MapType{}
+		options.Copy(optargs.MapType(jsbeautifier.DefaultOptions()))
+		output, err := beautifyFunc(&input, options)
+		if err != nil {
+			done <- result{ok: false}
+			return
+		}
+		done <- result{value: output, ok: true}
+	}(content)
+
+	select {
+	case res := <-done:
+		if !res.ok {
+			return content
+		}
+		return res.value
+	case <-time.After(beautifyTimeout):
+		return content
+	}
 }
 
 // HighlightContext returns the context with the endpoint highlighted for HTML output.
