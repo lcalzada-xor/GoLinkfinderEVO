@@ -38,12 +38,7 @@ func AppendHTML(builder *strings.Builder, resource string, endpoints []model.End
 
 // SaveHTML renders the final HTML report to the provided output path.
 func SaveHTML(content, outputPath string) error {
-	tplData, err := os.ReadFile("template.html")
-	if err != nil {
-		return err
-	}
-
-	tpl, err := template.New("output").Parse(string(tplData))
+	tpl, err := template.New("output").Parse(templateHTML)
 	if err != nil {
 		return err
 	}
