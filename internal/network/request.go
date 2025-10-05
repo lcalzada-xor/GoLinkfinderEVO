@@ -1,8 +1,8 @@
 package network
 
 import (
-	"compress/flate"
 	"compress/gzip"
+	"compress/zlib"
 	"io"
 	"net/http"
 
@@ -56,8 +56,11 @@ func decodeBody(resp *http.Response) (io.ReadCloser, error) {
 		}
 		return gz, nil
 	case "deflate":
-		fl := flate.NewReader(resp.Body)
-		return fl, nil
+		zr, err := zlib.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		return zr, nil
 	default:
 		return resp.Body, nil
 	}
