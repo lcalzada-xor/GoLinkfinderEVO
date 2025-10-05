@@ -6,27 +6,34 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strconv"
 	"time"
 )
 
 // Config contains runtime configuration provided via flags.
 type Config struct {
-	Domain  bool
-	Scope   string
-	Input   string
-	Output  string
-	Raw     string
-	JSON    string
-	Regex   string
-	Burp    bool
-	Cookies string
-	Timeout time.Duration
+	Domain   bool
+	Scope    string
+	Input    string
+	Output   string
+	Raw      string
+	Regex    string
+	Burp     bool
+	Cookies  string
+	Timeout  time.Duration
+	Workers  int
+	MaxDepth int
 }
 
 // ParseFlags parses CLI flags into a Config value.
 func ParseFlags() (Config, error) {
-	cfg := Config{Timeout: 10 * time.Second}
+	defaultWorkers := runtime.NumCPU()
+	if defaultWorkers < 1 {
+		defaultWorkers = 1
+	}
+
+	cfg := Config{Timeout: 10 * time.Second, Workers: defaultWorkers}
 
 	flag.Usage = func() {
 		out := flag.CommandLine.Output()
@@ -43,6 +50,8 @@ func ParseFlags() (Config, error) {
 		printOption(out, "burp", "b", "", "Treat the input as a Burp Suite XML export.", "")
 		printOption(out, "cookies", "c", "string", "Include cookies when fetching authenticated JavaScript files.", "")
 		printOption(out, "timeout", "t", "duration", "Maximum time to wait for server responses (e.g. 10s, 1m).", cfg.Timeout.String())
+		printOption(out, "workers", "", "int", "Maximum number of concurrent fetch operations.", strconv.Itoa(cfg.Workers))
+		printOption(out, "max-depth", "", "int", "Maximum recursion depth when using --domain (0 means unlimited).", strconv.Itoa(cfg.MaxDepth))
 	}
 
 	flag.BoolVar(&cfg.Domain, "domain", false, "Recursively parse JavaScript resources discovered on the provided domain.")
@@ -74,10 +83,21 @@ func ParseFlags() (Config, error) {
 	flag.DurationVar(&cfg.Timeout, "timeout", cfg.Timeout, "Maximum time to wait for server responses (e.g. 10s, 1m).")
 	registerDurationAlias("t", "timeout", &cfg.Timeout)
 
+	flag.IntVar(&cfg.Workers, "workers", cfg.Workers, "Maximum number of concurrent fetch operations.")
+	flag.IntVar(&cfg.MaxDepth, "max-depth", 0, "Maximum recursion depth when using --domain (0 means unlimited).")
+
 	flag.Parse()
 
 	if cfg.Input == "" {
 		return cfg, errors.New("-i/--input is required")
+	}
+
+	if cfg.Workers < 1 {
+		return cfg, errors.New("--workers must be at least 1")
+	}
+
+	if cfg.MaxDepth < 0 {
+		return cfg, errors.New("--max-depth must be at least 0")
 	}
 
 	return cfg, nil
