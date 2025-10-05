@@ -67,8 +67,8 @@ This command crawls `https://target.com`, prints discovered endpoints to stdout,
 # Scan a local JavaScript bundle and filter for API paths only
 go run . -i ./static/app.js --regex api --raw api-endpoints.txt
 
-# Enumerate a target through Burp and output JSON for further scripting
-go run . -i https://scope.example --scope example --proxy http://127.0.0.1:8080 --json findings.json
+# Enumerate a target through Burp, include subdomains, and output JSON for further scripting
+go run . -i https://scope.example --scope example --scope-include-subdomains --proxy http://127.0.0.1:8080 --json findings.json
 
 # Import historical data from a Burp Suite XML export
 go run . -b ./traffic-export.xml --workers 20
@@ -86,6 +86,7 @@ go run . -b ./traffic-export.xml --workers 20
 | `--regex` | Apply an additional regex filter to matches. |
 | `--domain` | Restrict results to the input domain only. |
 | `--scope` | Supply a custom allow-list of domains. |
+| `--scope-include-subdomains` | Expand `--scope` matches to include subdomains of the provided domain. |
 | `--cookies` | Attach cookies to outbound requests. |
 | `--proxy` | Proxy all HTTP/S traffic via the given URL. |
 | `--insecure` | Skip TLS certificate verification (use with caution). |
@@ -104,6 +105,7 @@ Leverage Go's concurrency to adapt to target environments:
 
 - Chain GoLinkFinder EVO with tools like `gau`, `waybackurls`, or `katana` to build comprehensive target lists.
 - Use scope flags to keep findings relevant to bug bounty programs and avoid out-of-scope domains.
+- Combine `--scope` with `--scope-include-subdomains` when a program allows wildcard coverage beneath a base domain.
 - Export JSON and feed it into automation workflows or data lakes for long-term recon tracking.
 - Pair with visualization dashboards or Notion/Obsidian notes by saving HTML reports.
 
