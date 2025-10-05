@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"html"
 	"regexp"
 	"sort"
@@ -12,7 +13,30 @@ import (
 	"github.com/example/GoLinkfinderEVO/internal/model"
 )
 
-const endpointBody = `
+var (
+	commonFileExtensions = []string{
+		"action",
+		"php",
+		"php5",
+		"asp",
+		"aspx",
+		"ashx",
+		"jsp",
+		"json",
+		"json5",
+		"html",
+		"js",
+		"txt",
+		"xml",
+		"config",
+	}
+	endpointBody = buildEndpointBody(commonFileExtensions)
+	rawRegex     = buildRawRegex(endpointBody)
+)
+
+func buildEndpointBody(extensions []string) string {
+	specificPattern := strings.Join(extensions, "|")
+	return fmt.Sprintf(`
 
   (
     ((?:[a-zA-Z]{1,10}://|//)
@@ -29,7 +53,7 @@ const endpointBody = `
 
     ([a-zA-Z0-9_\-/]{1,}/
     [a-zA-Z0-9_\-/.]{1,}
-    \.(?:[a-zA-Z]{1,4}|action)
+    \.(?:[a-zA-Z0-9_-]{1,10}|%s)
     (?:[\?|#][^"|']{0,}|))
 
     |
@@ -41,16 +65,17 @@ const endpointBody = `
     |
 
     ([a-zA-Z0-9_\-]{1,}
-    \.(?:php|asp|aspx|jsp|json|
-         action|html|js|txt|xml)
+    \.(?:%s)
     (?:[\?|#][^"|']{0,}|))
 
   )
 
-`
+`, specificPattern, specificPattern)
+}
 
-const rawRegex = "" +
-	`
+func buildRawRegex(endpointBody string) string {
+	return "" +
+		`
   (?:
     "` + endpointBody + `"
     |
@@ -60,6 +85,8 @@ const rawRegex = "" +
   )
 
 `
+}
+
 const contextDelimiter = "\n"
 
 var endpointRegex = regexp.MustCompile(compactPattern(rawRegex))
