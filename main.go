@@ -62,7 +62,7 @@ func main() {
 
 		if cfg.Domain {
 			visited := map[string]struct{}{}
-			processDomain(cfg, t.URL, endpoints, endpointRegex, filterRegex, mode, builder, &reports, visited)
+			processDomain(cfg, t.URL, endpoints, endpointRegex, filterRegex, mode, builder, &reports, visited, cfg.MaxDepth)
 		}
 	}
 
@@ -105,7 +105,15 @@ func resolveContent(t model.Target, cfg config.Config) (string, error) {
 }
 
 func processDomain(cfg config.Config, baseResource string, endpoints []model.Endpoint, regex *regexp.Regexp, filter *regexp.Regexp,
-	mode output.Mode, builder *strings.Builder, reports *[]output.ResourceReport, visited map[string]struct{}) {
+	mode output.Mode, builder *strings.Builder, reports *[]output.ResourceReport, visited map[string]struct{}, depth int) {
+	if cfg.MaxDepth > 0 {
+		if depth <= 0 {
+			fmt.Printf("Maximum recursion depth (%d) reached at: %s\n\n", cfg.MaxDepth, baseResource)
+			return
+		}
+		depth--
+	}
+
 	for _, ep := range endpoints {
 		resolved, ok := network.CheckURL(ep.Link, baseResource)
 		if !ok {
@@ -138,7 +146,7 @@ func processDomain(cfg config.Config, baseResource string, endpoints []model.End
 		}
 
 		if len(newEndpoints) > 0 {
-			processDomain(cfg, resolved, newEndpoints, regex, filter, mode, builder, reports, visited)
+			processDomain(cfg, resolved, newEndpoints, regex, filter, mode, builder, reports, visited, depth)
 		}
 	}
 }

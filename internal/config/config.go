@@ -12,15 +12,16 @@ import (
 
 // Config contains runtime configuration provided via flags.
 type Config struct {
-	Domain  bool
-	Scope   string
-	Input   string
-	Output  string
-	Raw     string
-	Regex   string
-	Burp    bool
-	Cookies string
-	Timeout time.Duration
+	Domain   bool
+	Scope    string
+	Input    string
+	Output   string
+	Raw      string
+	Regex    string
+	Burp     bool
+	Cookies  string
+	Timeout  time.Duration
+	MaxDepth int
 }
 
 // ParseFlags parses CLI flags into a Config value.
@@ -41,6 +42,7 @@ func ParseFlags() (Config, error) {
 		printOption(out, "burp", "b", "", "Treat the input as a Burp Suite XML export.", "")
 		printOption(out, "cookies", "c", "string", "Include cookies when fetching authenticated JavaScript files.", "")
 		printOption(out, "timeout", "t", "duration", "Maximum time to wait for server responses (e.g. 10s, 1m).", cfg.Timeout.String())
+		printOption(out, "max-depth", "", "int", "Limit the recursion depth when crawling discovered JavaScript resources (0 for unlimited).", strconv.Itoa(cfg.MaxDepth))
 	}
 
 	flag.BoolVar(&cfg.Domain, "domain", false, "Recursively parse JavaScript resources discovered on the provided domain.")
@@ -70,10 +72,16 @@ func ParseFlags() (Config, error) {
 	flag.DurationVar(&cfg.Timeout, "timeout", cfg.Timeout, "Maximum time to wait for server responses (e.g. 10s, 1m).")
 	registerDurationAlias("t", "timeout", &cfg.Timeout)
 
+	flag.IntVar(&cfg.MaxDepth, "max-depth", 0, "Limit the recursion depth when crawling discovered JavaScript resources (0 for unlimited).")
+
 	flag.Parse()
 
 	if cfg.Input == "" {
 		return cfg, errors.New("-i/--input is required")
+	}
+
+	if cfg.MaxDepth < 0 {
+		return cfg, errors.New("--max-depth must be greater than or equal to 0")
 	}
 
 	return cfg, nil
