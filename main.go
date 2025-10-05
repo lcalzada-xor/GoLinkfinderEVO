@@ -90,6 +90,10 @@ func processDomain(cfg config.Config, baseResource string, endpoints []model.End
 			continue
 		}
 
+		if cfg.Scope != "" && !network.WithinScope(resolved, cfg.Scope) {
+			continue
+		}
+
 		if visited != nil {
 			if _, seen := visited[resolved]; seen {
 				continue

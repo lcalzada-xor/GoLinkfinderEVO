@@ -67,3 +67,52 @@ func TestCheckURL(t *testing.T) {
 		})
 	}
 }
+
+func TestWithinScope(t *testing.T) {
+	tests := []struct {
+		name     string
+		resource string
+		scope    string
+		want     bool
+	}{
+		{
+			name:     "matching host with scheme",
+			resource: "https://static.example.com/app.js",
+			scope:    "https://static.example.com",
+			want:     true,
+		},
+		{
+			name:     "matching host without scope scheme",
+			resource: "https://example.com/app.js",
+			scope:    "example.com",
+			want:     true,
+		},
+		{
+			name:     "different host",
+			resource: "https://cdn.example.com/app.js",
+			scope:    "example.com",
+			want:     false,
+		},
+		{
+			name:     "ignore port in resource",
+			resource: "https://example.com:8443/app.js",
+			scope:    "https://example.com",
+			want:     true,
+		},
+		{
+			name:     "invalid scope",
+			resource: "https://example.com/app.js",
+			scope:    "://",
+			want:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := WithinScope(tt.resource, tt.scope)
+			if got != tt.want {
+				t.Fatalf("expected %v, got %v", tt.want, got)
+			}
+		})
+	}
+}
