@@ -38,10 +38,26 @@ func WriteText(path string, generatedAt time.Time, rules []string, findings []Fi
 			buf.WriteString(finding.Resource)
 			buf.WriteByte('\n')
 			buf.WriteString(fmt.Sprintf("Line: %d\n", finding.Line))
-			buf.WriteString(fmt.Sprintf("Rule: %s\n", finding.Rule))
+			if len(finding.Rules) > 0 {
+				buf.WriteString(fmt.Sprintf("Rules: %s\n", strings.Join(finding.Rules, ", ")))
+			} else {
+				buf.WriteString("Rules: none\n")
+			}
 			buf.WriteString("Evidence: ")
 			buf.WriteString(finding.Evidence)
-			buf.WriteString("\n\n")
+			buf.WriteByte('\n')
+
+			trimmed := strings.TrimSpace(finding.Context)
+			if trimmed != "" {
+				buf.WriteString("Context:\n")
+				for _, line := range strings.Split(trimmed, "\n") {
+					buf.WriteString("  ")
+					buf.WriteString(line)
+					buf.WriteByte('\n')
+				}
+			}
+
+			buf.WriteByte('\n')
 		}
 	}
 
