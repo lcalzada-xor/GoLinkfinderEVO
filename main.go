@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -315,12 +316,33 @@ func newVisitedSet() *visitedSet {
 }
 
 func (v *visitedSet) Add(value string) bool {
+	canonical := canonicalURL(value)
+	if canonical == "" {
+		canonical = value
+	}
+
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	if _, ok := v.values[value]; ok {
+	if _, ok := v.values[canonical]; ok {
 		return false
 	}
-	v.values[value] = struct{}{}
+	v.values[canonical] = struct{}{}
 	return true
+}
+
+func canonicalURL(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+
+	// Ignore query parameters and fragments to avoid revisiting the same
+	// JavaScript resource with different cache-busting values.
+	parsed.RawQuery = ""
+	parsed.ForceQuery = false
+	parsed.Fragment = ""
+	parsed.RawFragment = ""
+
+	return parsed.String()
 }
