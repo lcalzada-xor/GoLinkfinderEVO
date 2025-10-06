@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/config"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/gf"
 	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/input"
 	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/model"
 	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/network"
@@ -185,6 +186,24 @@ func main() {
 	}
 
 	meta := output.BuildMetadata(reports, generatedAt)
+
+	if cfg.GFAll || len(cfg.GFPatterns) > 0 {
+		definitions, err := gf.LoadDefinitions(cfg.GFPatterns, cfg.GFAll)
+		if err != nil {
+			exitWithError(fmt.Errorf("unable to load gf rules: %w", err))
+		}
+
+		findings := gf.FindInReports(reports, definitions)
+		rules := gf.RuleNames(definitions)
+
+		if err := gf.WriteText(gf.TextFilename, generatedAt, rules, findings); err != nil {
+			exitWithError(fmt.Errorf("unable to write gf text findings: %w", err))
+		}
+
+		if err := gf.WriteJSON(gf.JSONFilename, generatedAt, rules, findings); err != nil {
+			exitWithError(fmt.Errorf("unable to write gf JSON findings: %w", err))
+		}
+	}
 
 	if rawPath != "" {
 		if err := output.WriteRaw(rawPath, reports, meta); err != nil {

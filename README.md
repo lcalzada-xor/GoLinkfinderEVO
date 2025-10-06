@@ -35,6 +35,7 @@ Use GoLinkFinder EVO to supercharge your bug bounty methodology, automate URL di
 
 - 🔍 **Smart pattern matching** – Extract JavaScript endpoints, REST routes, AWS/GCP URLs, JWTs, keys, and more with customizable regex filters.
 - 📄 **Flexible outputs** – Stream matches to stdout, generate HTML reports for presentations, export plain text with `--raw`, or produce machine-readable JSON for integrations.
+- 🧰 **gf rule integration** – Run your favourite [tomnomnom/gf](https://github.com/tomnomnom/gf) patterns against discovered endpoints and export structured findings automatically.
 - 🌐 **Scope-aware crawling** – Constrain discovery to specific domains, respect scopes, and feed data from live URLs, local JS bundles, or Burp XML exports (`-b`).
 - 🔒 **Proxy & TLS control** – Route traffic through Burp/ZAP with `--proxy` or skip verification for lab environments via `--insecure`.
 - ⚙️ **Parallel workers** – Configure worker pools with `--workers` to balance speed, rate limits, and stealth.
@@ -77,6 +78,20 @@ go run . -i https://target.com --output cli,html=report.html,json=findings.json
 go run . -b ./traffic-export.xml --workers 20
 ```
 
+### gf integration
+
+Place your gf JSON definitions inside `~/.gf` (the same convention used by the original tool). Then pass either a comma-separated list of rule names or `all` to execute every JSON file:
+
+```bash
+# Run specific gf rules and generate gf.txt / gf.json with matches
+go run . -i https://target.com --gf jwt,urls
+
+# Execute every rule found inside ~/.gf
+go run . -i https://target.com --gf all
+```
+
+The generated `gf.txt` and `gf.json` files include the resource path, line number, matching evidence, and the rule responsible for each finding.
+
 ## Flags reference
 
 | Flag | Description |
@@ -95,6 +110,7 @@ go run . -b ./traffic-export.xml --workers 20
 | `--insecure` | Skip TLS certificate verification (use with caution). |
 | `--timeout` | Configure request timeout in seconds. |
 | `--workers` | Tune concurrency level. Defaults to logical CPU count. |
+| `--gf` | Execute gf patterns stored in `~/.gf`. Accepts comma-separated rule names or `all` to run every JSON file. Findings are saved to `gf.txt` and `gf.json`. |
 
 ## Performance tuning
 
