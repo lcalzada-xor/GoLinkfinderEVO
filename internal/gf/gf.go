@@ -21,10 +21,11 @@ type Definition struct {
 
 // Finding captures a gf match extracted from the reports.
 type Finding struct {
-	Resource string `json:"resource"`
-	Line     int    `json:"line"`
-	Evidence string `json:"evidence"`
-	Rule     string `json:"rule"`
+	Resource string   `json:"resource"`
+	Line     int      `json:"line"`
+	Evidence string   `json:"evidence"`
+	Context  string   `json:"context,omitempty"`
+	Rules    []string `json:"rules"`
 }
 
 // LoadDefinitions loads gf rule definitions from the ~/.gf directory.
@@ -166,33 +167,87 @@ func parseDefinition(path string) (Definition, error) {
 
 // FindInReports runs all gf definitions against the collected reports and returns any matches found.
 func FindInReports(reports []output.ResourceReport, defs []Definition) []Finding {
-	findings := make([]Finding, 0)
 	if len(defs) == 0 {
-		return findings
+		return nil
 	}
+
+	type key struct {
+		resource string
+		line     int
+		evidence string
+	}
+
+	findingsByKey := make(map[key]*Finding)
 
 	for _, report := range reports {
 		for _, ep := range report.Endpoints {
+			context := strings.TrimSpace(ep.Context)
+
 			for _, def := range defs {
 				for _, re := range def.Patterns {
 					matches := re.FindAllString(ep.Link, -1)
 					if matches == nil {
 						continue
 					}
+
 					for _, match := range matches {
-						findings = append(findings, Finding{
-							Resource: report.Resource,
-							Line:     ep.Line,
-							Evidence: match,
-							Rule:     def.Name,
-						})
+						k := key{resource: report.Resource, line: ep.Line, evidence: match}
+
+						finding, ok := findingsByKey[k]
+						if !ok {
+							finding = &Finding{
+								Resource: report.Resource,
+								Line:     ep.Line,
+								Evidence: match,
+								Context:  context,
+							}
+							findingsByKey[k] = finding
+						} else if finding.Context == "" && context != "" {
+							finding.Context = context
+						}
+
+						if !containsRule(finding.Rules, def.Name) {
+							finding.Rules = append(finding.Rules, def.Name)
+						}
 					}
 				}
 			}
 		}
 	}
 
+	if len(findingsByKey) == 0 {
+		return nil
+	}
+
+	findings := make([]Finding, 0, len(findingsByKey))
+	for _, finding := range findingsByKey {
+		sort.Strings(finding.Rules)
+		findings = append(findings, *finding)
+	}
+
+	sort.Slice(findings, func(i, j int) bool {
+		if findings[i].Resource != findings[j].Resource {
+			return findings[i].Resource < findings[j].Resource
+		}
+		if findings[i].Line != findings[j].Line {
+			return findings[i].Line < findings[j].Line
+		}
+		if findings[i].Evidence != findings[j].Evidence {
+			return findings[i].Evidence < findings[j].Evidence
+		}
+		return strings.Join(findings[i].Rules, ",") < strings.Join(findings[j].Rules, ",")
+	})
+
 	return findings
+}
+
+func containsRule(rules []string, rule string) bool {
+	for _, existing := range rules {
+		if existing == rule {
+			return true
+		}
+	}
+	return false
 }
 
 // RuleNames extracts the names of the loaded definitions.
