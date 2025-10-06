@@ -27,6 +27,8 @@ type Config struct {
 	MaxDepth               int
 	ScopeIncludeSubdomains bool
 	Outputs                []OutputTarget
+	GFAll                  bool
+	GFPatterns             []string
 }
 
 // OutputFormat represents a supported output channel.
@@ -96,6 +98,7 @@ func ParseFlags() (Config, error) {
 		printOption(out, "timeout", "t", "duration", "Maximum time to wait for server responses (e.g. 10s, 1m).", cfg.Timeout.String())
 		printOption(out, "workers", "", "int", "Maximum number of concurrent fetch operations.", strconv.Itoa(cfg.Workers))
 		printOption(out, "max-depth", "", "int", "Maximum recursion depth when using --domain (0 means unlimited).", strconv.Itoa(cfg.MaxDepth))
+		printOption(out, "gf", "", "string", "Comma separated list of gf rules located in ~/.gf or 'all' to run every rule.", "")
 	}
 
 	flag.BoolVar(&cfg.Domain, "domain", false, "Recursively parse JavaScript resources discovered on the provided domain.")
@@ -137,10 +140,39 @@ func ParseFlags() (Config, error) {
 	flag.IntVar(&cfg.Workers, "workers", cfg.Workers, "Maximum number of concurrent fetch operations.")
 	flag.IntVar(&cfg.MaxDepth, "max-depth", 0, "Maximum recursion depth when using --domain (0 means unlimited).")
 
+	var gfRaw string
+	flag.StringVar(&gfRaw, "gf", "", "Comma separated list of gf rules located in ~/.gf or 'all' to run every rule.")
+
 	flag.Parse()
 
 	if !collector.has(OutputCLI) {
 		_ = collector.add(OutputCLI, "")
+	}
+
+	gfRaw = strings.TrimSpace(gfRaw)
+	if gfRaw != "" {
+		if strings.EqualFold(gfRaw, "all") {
+			cfg.GFAll = true
+		} else {
+			parts := strings.Split(gfRaw, ",")
+			seen := make(map[string]struct{}, len(parts))
+			for _, part := range parts {
+				name := strings.TrimSpace(part)
+				if name == "" {
+					continue
+				}
+				lname := strings.ToLower(name)
+				if _, ok := seen[lname]; ok {
+					continue
+				}
+				seen[lname] = struct{}{}
+				cfg.GFPatterns = append(cfg.GFPatterns, name)
+			}
+
+			if len(cfg.GFPatterns) == 0 {
+				return cfg, errors.New("--gf requires at least one rule name or 'all'")
+			}
+		}
 	}
 
 	if cfg.Input == "" {
