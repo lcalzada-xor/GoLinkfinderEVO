@@ -39,6 +39,8 @@ const (
 	OutputHTML
 	OutputJSON
 	OutputRaw
+	OutputGFText
+	OutputGFJSON
 )
 
 func (f OutputFormat) String() string {
@@ -51,6 +53,10 @@ func (f OutputFormat) String() string {
 		return "json"
 	case OutputRaw:
 		return "raw"
+	case OutputGFText:
+		return "gf.txt"
+	case OutputGFJSON:
+		return "gf.json"
 	default:
 		return "unknown"
 	}
@@ -58,7 +64,7 @@ func (f OutputFormat) String() string {
 
 func (f OutputFormat) requiresPath() bool {
 	switch f {
-	case OutputHTML, OutputJSON, OutputRaw:
+	case OutputHTML, OutputJSON, OutputRaw, OutputGFText, OutputGFJSON:
 		return true
 	default:
 		return false
@@ -89,7 +95,7 @@ func ParseFlags() (Config, error) {
 		printOption(out, "scope", "s", "string", "Restrict recursive JavaScript fetching to the specified domain (e.g. example.com).", "")
 		printOption(out, "scope-include-subdomains", "", "", "When used with --scope, also allow subdomains of the provided domain.", "")
 		printOption(out, "input", "i", "string", "URL, file or folder to analyse. For folders you can use wildcards (e.g. '/*.js').", "")
-		printOption(out, "output", "o", "string", "Configure one or more outputs (e.g. 'cli', 'html=report.html'). May be repeated or comma separated.", "cli")
+		printOption(out, "output", "o", "string", "Configure one or more outputs (e.g. 'cli', 'html=report.html', 'gf.txt=findings.txt'). May be repeated or comma separated.", "cli")
 		printOption(out, "regex", "r", "string", "Only report endpoints matching the provided regular expression (e.g. '^/api/').", "")
 		printOption(out, "burp", "b", "", "Treat the input as a Burp Suite XML export.", "")
 		printOption(out, "cookies", "c", "string", "Include cookies when fetching authenticated JavaScript files.", "")
@@ -429,6 +435,10 @@ func parseOutputFormat(value string) (OutputFormat, error) {
 		return OutputJSON, nil
 	case OutputRaw.String():
 		return OutputRaw, nil
+	case OutputGFText.String():
+		return OutputGFText, nil
+	case OutputGFJSON.String():
+		return OutputGFJSON, nil
 	default:
 		if value == "" {
 			return OutputHTML, nil

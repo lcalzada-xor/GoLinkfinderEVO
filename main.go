@@ -25,10 +25,14 @@ func main() {
 		exitWithError(err)
 	}
 
-	var mode output.Mode
-	var htmlPath string
-	var jsonPath string
-	var rawPath string
+	var (
+		mode       output.Mode
+		htmlPath   string
+		jsonPath   string
+		rawPath    string
+		gfTextPath = gf.TextFilename
+		gfJSONPath = gf.JSONFilename
+	)
 
 	for _, target := range cfg.Outputs {
 		switch target.Format {
@@ -41,6 +45,10 @@ func main() {
 			jsonPath = target.Path
 		case config.OutputRaw:
 			rawPath = target.Path
+		case config.OutputGFText:
+			gfTextPath = target.Path
+		case config.OutputGFJSON:
+			gfJSONPath = target.Path
 		}
 	}
 
@@ -197,11 +205,11 @@ func main() {
 		findings := gf.FindInReports(reports, definitions)
 		rules := gf.RuleNames(definitions)
 
-		if err := gf.WriteText(gf.TextFilename, generatedAt, rules, findings); err != nil {
+		if err := gf.WriteText(gfTextPath, generatedAt, rules, findings); err != nil {
 			exitWithError(fmt.Errorf("unable to write gf text findings: %w", err))
 		}
 
-		if err := gf.WriteJSON(gf.JSONFilename, generatedAt, rules, findings); err != nil {
+		if err := gf.WriteJSON(gfJSONPath, generatedAt, rules, findings); err != nil {
 			exitWithError(fmt.Errorf("unable to write gf JSON findings: %w", err))
 		}
 	}
