@@ -244,3 +244,21 @@ func IsTimeoutError(err error) bool {
 
 	return false
 }
+
+// IsDNSOrNetworkError reports whether err represents a DNS resolution or network error
+// that can be safely ignored (e.g., host doesn't exist, connection refused).
+func IsDNSOrNetworkError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	msg := err.Error()
+	// Check for common DNS and network errors
+	return strings.Contains(msg, "no such host") ||
+		strings.Contains(msg, "connection refused") ||
+		strings.Contains(msg, "network is unreachable") ||
+		strings.Contains(msg, "host is down") ||
+		strings.Contains(msg, "dial tcp") && strings.Contains(msg, "lookup") ||
+		strings.Contains(msg, "name resolution failed") ||
+		strings.Contains(msg, "temporary failure in name resolution")
+}

@@ -144,6 +144,12 @@ func main() {
 						continue
 					}
 
+					if network.IsDNSOrNetworkError(err) {
+						fmt.Printf("DNS or network error for: %s (host may not exist or be unreachable)\n", task.target.URL)
+						taskWg.Done()
+						continue
+					}
+
 					if task.fromDomain {
 						fmt.Printf("Invalid input defined or SSL error for: %s\n", task.target.URL)
 						taskWg.Done()
