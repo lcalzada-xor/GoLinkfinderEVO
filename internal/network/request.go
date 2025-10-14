@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/andybalholm/brotli"
+	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/browser"
 	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/config"
 )
 
@@ -93,7 +94,29 @@ func buildTransport(cfg config.Config) (*http.Transport, error) {
 }
 
 // Fetch retrieves the content for the provided URL.
-func Fetch(rawURL string, cfg config.Config) (string, error) {
+func Fetch(ctx context.Context, rawURL string, cfg config.Config) (string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	if cfg.Render {
+		rendered, renderErr := browser.FetchRendered(ctx, rawURL, cfg)
+		if renderErr == nil {
+			return rendered, nil
+		}
+
+		plain, plainErr := fetchWithHTTP(ctx, rawURL, cfg)
+		if plainErr != nil {
+			return "", errors.Join(renderErr, plainErr)
+		}
+
+		return plain, nil
+	}
+
+	return fetchWithHTTP(ctx, rawURL, cfg)
+}
+
+func fetchWithHTTP(ctx context.Context, rawURL string, cfg config.Config) (string, error) {
 	client, err := getHTTPClient(cfg)
 	if err != nil {
 		return "", err
@@ -102,6 +125,8 @@ func Fetch(rawURL string, cfg config.Config) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	req = req.WithContext(ctx)
 
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36")
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")

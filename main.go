@@ -136,7 +136,7 @@ func main() {
 					fmt.Printf("Running against: %s\n\n", task.target.URL)
 				}
 
-				content, err := resolveContent(task.target, cfg)
+				content, err := resolveContent(ctx, task.target, cfg)
 				if err != nil {
 					if network.IsTimeoutError(err) {
 						fmt.Printf("Request timed out for: %s\n", task.target.URL)
@@ -244,7 +244,7 @@ func main() {
 	}
 }
 
-func resolveContent(t model.Target, cfg config.Config) (string, error) {
+func resolveContent(ctx context.Context, t model.Target, cfg config.Config) (string, error) {
 	if t.Prefetched {
 		return t.Content, nil
 	}
@@ -253,7 +253,7 @@ func resolveContent(t model.Target, cfg config.Config) (string, error) {
 		return input.ResolveFilePath(t.URL)
 	}
 
-	return network.Fetch(t.URL, cfg)
+	return network.Fetch(ctx, t.URL, cfg)
 }
 
 func processDomain(ctx context.Context, cfg config.Config, baseResource string, endpoints []model.Endpoint, visited *visitedSet,

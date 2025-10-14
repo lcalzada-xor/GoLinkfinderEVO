@@ -44,7 +44,7 @@ func TestFetchDeflate(t *testing.T) {
 	defer server.Close()
 
 	cfg := config.Config{Timeout: time.Second}
-	content, err := Fetch(server.URL, cfg)
+	content, err := Fetch(context.Background(), server.URL, cfg)
 	if err != nil {
 		t.Fatalf("Fetch returned error: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestFetchBrotli(t *testing.T) {
 	defer server.Close()
 
 	cfg := config.Config{Timeout: time.Second}
-	content, err := Fetch(server.URL, cfg)
+	content, err := Fetch(context.Background(), server.URL, cfg)
 	if err != nil {
 		t.Fatalf("Fetch returned error: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestFetchHandlesCorruptGzip(t *testing.T) {
 	defer server.Close()
 
 	cfg := config.Config{Timeout: time.Second}
-	content, err := Fetch(server.URL, cfg)
+	content, err := Fetch(context.Background(), server.URL, cfg)
 	if err != nil {
 		t.Fatalf("Fetch returned error: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestFetchConcurrentRequests(t *testing.T) {
 				}
 			}
 
-			_, err := Fetch(server.URL, cfg)
+			_, err := Fetch(context.Background(), server.URL, cfg)
 			errs <- err
 
 			atomic.AddInt32(&active, -1)
