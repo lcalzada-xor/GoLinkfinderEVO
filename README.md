@@ -63,6 +63,14 @@ go run . -i https://target.com --output html=report.html
 
 This command crawls `https://target.com`, prints discovered endpoints to stdout, and saves an interactive HTML report to `report.html`.
 
+You can also stream targets directly via standard input by passing `-` as the input value:
+
+```bash
+echo https://example.com | go run . -i -
+```
+
+When the `-i` flag receives `-`, GoLinkFinder EVO reads targets line-by-line from `STDIN`, applying the same filtering rules as when you provide a file list.
+
 ### Advanced examples
 
 ```bash
@@ -77,10 +85,14 @@ go run . -i https://target.com --output cli,html=report.html,json=findings.json
 
 # Execute JavaScript before parsing to capture dynamically generated endpoints
 go run . -i https://target.com/app --render --timeout 20s
+# Send authenticated requests with repeatable custom headers
+go run . -i https://api.target.com --header "Authorization: Bearer <token>" --header "X-Trace-Id: 12345"
 
 # Import historical data from a Burp Suite XML export
 go run . -b ./traffic-export.xml --workers 20
 ```
+
+> **Heads-up:** Custom headers often carry sensitive secrets (API keys, bearer tokens, session cookies, etc.). Prefer passing them via environment variables or redacting them in command histories and shared scripts.
 
 ### gf integration
 
@@ -110,6 +122,7 @@ The generated `gf.txt` and `gf.json` files include the resource path, line numbe
 | `--scope` | Supply a custom allow-list of domains. |
 | `--scope-include-subdomains` | Expand `--scope` matches to include subdomains of the provided domain. |
 | `--cookies` | Attach cookies to outbound requests. |
+| `-H, --header` | Attach arbitrary HTTP headers (e.g. `-H "Authorization: Bearer token"`). Repeat to send multiple headers. |
 | `--proxy` | Proxy all HTTP/S traffic via the given URL. |
 | `--insecure` | Skip TLS certificate verification (use with caution). |
 | `-R, --render` | Execute pages in a headless Chromium browser before parsing (requires local Chromium/Chrome). |

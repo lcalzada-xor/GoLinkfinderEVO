@@ -86,6 +86,73 @@ func TestParseFlagsGFOutputs(t *testing.T) {
 	}
 }
 
+func TestParseFlagsHeaders(t *testing.T) {
+	oldArgs := os.Args
+	t.Cleanup(func() {
+		os.Args = oldArgs
+	})
+
+	oldCommandLine := flag.CommandLine
+	t.Cleanup(func() {
+		flag.CommandLine = oldCommandLine
+	})
+
+	flag.CommandLine = flag.NewFlagSet(oldArgs[0], flag.ContinueOnError)
+
+	os.Args = []string{
+		oldArgs[0],
+		"-i", "https://example.com/resource.js",
+		"--header", "Authorization: Bearer token",
+		"-H", "User-Agent: Custom Agent",
+		"--header", "x-test-header: some value",
+	}
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags() returned error: %v", err)
+	}
+
+	if len(cfg.Headers) != 3 {
+		t.Fatalf("expected 3 headers, got %d", len(cfg.Headers))
+	}
+
+	if got, want := cfg.Headers[0], (Header{Name: "Authorization", Value: "Bearer token"}); got != want {
+		t.Fatalf("unexpected first header: %+v", got)
+	}
+
+	if got, want := cfg.Headers[1], (Header{Name: "User-Agent", Value: "Custom Agent"}); got != want {
+		t.Fatalf("unexpected second header: %+v", got)
+	}
+
+	if got, want := cfg.Headers[2], (Header{Name: "X-Test-Header", Value: "some value"}); got != want {
+		t.Fatalf("unexpected third header: %+v", got)
+	}
+}
+
+func TestParseFlagsHeaderInvalidFormat(t *testing.T) {
+	oldArgs := os.Args
+	t.Cleanup(func() {
+		os.Args = oldArgs
+	})
+
+	oldCommandLine := flag.CommandLine
+	t.Cleanup(func() {
+		flag.CommandLine = oldCommandLine
+	})
+
+	flag.CommandLine = flag.NewFlagSet(oldArgs[0], flag.ContinueOnError)
+
+	os.Args = []string{
+		oldArgs[0],
+		"-i", "https://example.com",
+		"--header", "missing colon",
+	}
+
+	if _, err := ParseFlags(); err == nil {
+		t.Fatal("expected error due to invalid header format, got nil")
+	}
+}
+
 func findOutput(outputs []OutputTarget, format OutputFormat) (OutputTarget, bool) {
 	for _, target := range outputs {
 		if target.Format == format {
