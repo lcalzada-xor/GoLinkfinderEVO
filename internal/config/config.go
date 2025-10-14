@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"runtime"
 	"strconv"
@@ -20,6 +21,7 @@ type Config struct {
 	Regex                  string
 	Burp                   bool
 	Cookies                string
+	Headers                []Header
 	Proxy                  string
 	Insecure               bool
 	Timeout                time.Duration
@@ -77,6 +79,12 @@ type OutputTarget struct {
 	Path   string
 }
 
+// Header represents a single HTTP header to include with outbound requests.
+type Header struct {
+	Name  string
+	Value string
+}
+
 // ParseFlags parses CLI flags into a Config value.
 func ParseFlags() (Config, error) {
 	defaultWorkers := runtime.NumCPU()
@@ -99,6 +107,7 @@ func ParseFlags() (Config, error) {
 		printOption(out, "regex", "r", "string", "Only report endpoints matching the provided regular expression (e.g. '^/api/').", "")
 		printOption(out, "burp", "b", "", "Treat the input as a Burp Suite XML export.", "")
 		printOption(out, "cookies", "c", "string", "Include cookies when fetching authenticated JavaScript files.", "")
+		printOption(out, "header", "H", "\"Name: Value\"", "Attach custom HTTP headers to outbound requests. May be repeated.", "")
 		printOption(out, "proxy", "", "string", "Forward HTTP requests through the provided proxy (e.g. http://127.0.0.1:8080).", "")
 		printOption(out, "insecure", "", "", "Skip TLS certificate verification when fetching HTTPS resources.", "")
 		printOption(out, "timeout", "t", "duration", "Maximum time to wait for server responses (e.g. 10s, 1m).", cfg.Timeout.String())
@@ -136,6 +145,10 @@ func ParseFlags() (Config, error) {
 	flag.StringVar(&cfg.Cookies, "cookies", "", "Include cookies when fetching authenticated JavaScript files.")
 	registerStringAlias("c", "cookies", &cfg.Cookies)
 
+	headerCollector := newHeaderCollector(&cfg.Headers)
+	flag.Var(headerCollector, "header", "Attach custom HTTP headers to outbound requests. May be repeated.")
+	flag.Var(headerCollector, "H", "Alias for --header.")
+
 	flag.StringVar(&cfg.Proxy, "proxy", "", "Forward HTTP requests through the provided proxy (e.g. http://127.0.0.1:8080).")
 
 	flag.BoolVar(&cfg.Insecure, "insecure", false, "Skip TLS certificate verification when fetching HTTPS resources.")
@@ -149,7 +162,9 @@ func ParseFlags() (Config, error) {
 	var gfRaw string
 	flag.StringVar(&gfRaw, "gf", "", "Comma separated list of gf rules located in ~/.gf or 'all' to run every rule.")
 
-	flag.Parse()
+	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
+		return cfg, err
+	}
 
 	if !collector.has(OutputCLI) {
 		_ = collector.add(OutputCLI, "")
@@ -477,4 +492,58 @@ func (a *outputAlias) String() string {
 		return ""
 	}
 	return a.collector.pathFor(a.format)
+}
+
+type headerCollector struct {
+	headers *[]Header
+}
+
+func newHeaderCollector(headers *[]Header) *headerCollector {
+	return &headerCollector{headers: headers}
+}
+
+func (h *headerCollector) Set(value string) error {
+	if value == "" {
+		return errors.New("header flag requires a value")
+	}
+
+	parts := strings.SplitN(value, ":", 2)
+	if len(parts) != 2 {
+		return errors.New("header must be in the format 'Name: Value'")
+	}
+
+	name := strings.TrimSpace(parts[0])
+	if name == "" {
+		return errors.New("header name cannot be empty")
+	}
+	if strings.ContainsAny(name, " \t\r\n") {
+		return fmt.Errorf("header name %q contains invalid whitespace", name)
+	}
+	if strings.ContainsAny(name, "\u0000\u000a\u000d") {
+		return fmt.Errorf("header name %q contains control characters", name)
+	}
+
+	canonical := http.CanonicalHeaderKey(name)
+	if canonical == "" {
+		return errors.New("header name cannot be empty")
+	}
+
+	headerValue := strings.TrimSpace(parts[1])
+	if strings.ContainsAny(headerValue, "\r\n") {
+		return errors.New("header value cannot contain newline characters")
+	}
+
+	*h.headers = append(*h.headers, Header{Name: canonical, Value: headerValue})
+	return nil
+}
+
+func (h *headerCollector) String() string {
+	if h == nil || h.headers == nil {
+		return ""
+	}
+	var formatted []string
+	for _, header := range *h.headers {
+		formatted = append(formatted, fmt.Sprintf("%s: %s", header.Name, header.Value))
+	}
+	return strings.Join(formatted, ", ")
 }

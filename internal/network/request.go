@@ -111,6 +111,13 @@ func Fetch(rawURL string, cfg config.Config) (string, error) {
 		req.Header.Set("Cookie", cfg.Cookies)
 	}
 
+	for _, header := range cfg.Headers {
+		if header.Name == "" {
+			continue
+		}
+		req.Header.Set(header.Name, header.Value)
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err

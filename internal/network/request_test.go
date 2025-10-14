@@ -88,6 +88,49 @@ func TestFetchBrotli(t *testing.T) {
 	}
 }
 
+func TestFetchAppliesCustomHeaders(t *testing.T) {
+	resetHTTPClient()
+	t.Cleanup(resetHTTPClient)
+
+	const (
+		token     = "Bearer custom-token"
+		userAgent = "GoLinkFinderEVO/headers-test"
+	)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != token {
+			t.Fatalf("unexpected Authorization header: got %q want %q", got, token)
+		}
+		if got := r.Header.Get("User-Agent"); got != userAgent {
+			t.Fatalf("unexpected User-Agent header: got %q want %q", got, userAgent)
+		}
+		if got := r.Header.Get("X-Test-Header"); got != "value" {
+			t.Fatalf("unexpected X-Test-Header: got %q want %q", got, "value")
+		}
+		if got := r.Header.Get("Accept-Language"); got == "" {
+			t.Fatal("expected default Accept-Language header to be set")
+		}
+
+		if _, err := w.Write([]byte("ok")); err != nil {
+			t.Fatalf("failed to write response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	cfg := config.Config{
+		Timeout: time.Second,
+		Headers: []config.Header{
+			{Name: "Authorization", Value: token},
+			{Name: "User-Agent", Value: userAgent},
+			{Name: "X-Test-Header", Value: "value"},
+		},
+	}
+
+	if _, err := Fetch(server.URL, cfg); err != nil {
+		t.Fatalf("Fetch returned error: %v", err)
+	}
+}
+
 func TestFetchHandlesCorruptGzip(t *testing.T) {
 	resetHTTPClient()
 	t.Cleanup(resetHTTPClient)
