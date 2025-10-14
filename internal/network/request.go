@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/andybalholm/brotli"
 	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/config"
 )
 
@@ -105,7 +106,7 @@ func Fetch(rawURL string, cfg config.Config) (string, error) {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36")
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.8")
-	req.Header.Set("Accept-Encoding", "gzip, deflate")
+	req.Header.Set("Accept-Encoding", "gzip, deflate, br")
 	if cfg.Cookies != "" {
 		req.Header.Set("Cookie", cfg.Cookies)
 	}
@@ -162,6 +163,10 @@ func readResponseBody(resp *http.Response) ([]byte, error) {
 	case "deflate":
 		decoded, decErr = decompressBytes(raw, func(r io.Reader) (io.ReadCloser, error) {
 			return zlib.NewReader(r)
+		})
+	case "br":
+		decoded, decErr = decompressBytes(raw, func(r io.Reader) (io.ReadCloser, error) {
+			return io.NopCloser(brotli.NewReader(r)), nil
 		})
 	default:
 		return raw, nil
