@@ -74,9 +74,14 @@ go run . -i https://scope.example --scope example --scope-include-subdomains --p
 # Crawl a domain and emit CLI, HTML, and JSON outputs simultaneously
 go run . -i https://target.com --output cli,html=report.html,json=findings.json
 
+# Send authenticated requests with repeatable custom headers
+go run . -i https://api.target.com --header "Authorization: Bearer <token>" --header "X-Trace-Id: 12345"
+
 # Import historical data from a Burp Suite XML export
 go run . -b ./traffic-export.xml --workers 20
 ```
+
+> **Heads-up:** Custom headers often carry sensitive secrets (API keys, bearer tokens, session cookies, etc.). Prefer passing them via environment variables or redacting them in command histories and shared scripts.
 
 ### gf integration
 
@@ -106,6 +111,7 @@ The generated `gf.txt` and `gf.json` files include the resource path, line numbe
 | `--scope` | Supply a custom allow-list of domains. |
 | `--scope-include-subdomains` | Expand `--scope` matches to include subdomains of the provided domain. |
 | `--cookies` | Attach cookies to outbound requests. |
+| `-H, --header` | Attach arbitrary HTTP headers (e.g. `-H "Authorization: Bearer token"`). Repeat to send multiple headers. |
 | `--proxy` | Proxy all HTTP/S traffic via the given URL. |
 | `--insecure` | Skip TLS certificate verification (use with caution). |
 | `--timeout` | Configure request timeout in seconds. |
