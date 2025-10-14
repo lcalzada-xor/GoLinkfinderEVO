@@ -24,6 +24,7 @@ type Config struct {
 	Headers                []Header
 	Proxy                  string
 	Insecure               bool
+	Render                 bool
 	Timeout                time.Duration
 	Workers                int
 	MaxDepth               int
@@ -110,6 +111,7 @@ func ParseFlags() (Config, error) {
 		printOption(out, "header", "H", "\"Name: Value\"", "Attach custom HTTP headers to outbound requests. May be repeated.", "")
 		printOption(out, "proxy", "", "string", "Forward HTTP requests through the provided proxy (e.g. http://127.0.0.1:8080).", "")
 		printOption(out, "insecure", "", "", "Skip TLS certificate verification when fetching HTTPS resources.", "")
+		printOption(out, "render", "R", "", "Execute pages with a headless browser before extracting endpoints.", "")
 		printOption(out, "timeout", "t", "duration", "Maximum time to wait for server responses (e.g. 10s, 1m).", cfg.Timeout.String())
 		printOption(out, "workers", "", "int", "Maximum number of concurrent fetch operations.", strconv.Itoa(cfg.Workers))
 		printOption(out, "max-depth", "", "int", "Maximum recursion depth when using --domain (0 means unlimited).", strconv.Itoa(cfg.MaxDepth))
@@ -152,6 +154,9 @@ func ParseFlags() (Config, error) {
 	flag.StringVar(&cfg.Proxy, "proxy", "", "Forward HTTP requests through the provided proxy (e.g. http://127.0.0.1:8080).")
 
 	flag.BoolVar(&cfg.Insecure, "insecure", false, "Skip TLS certificate verification when fetching HTTPS resources.")
+
+	flag.BoolVar(&cfg.Render, "render", false, "Execute pages with a headless browser before extracting endpoints.")
+	registerBoolAlias("R", "render", &cfg.Render)
 
 	flag.DurationVar(&cfg.Timeout, "timeout", cfg.Timeout, "Maximum time to wait for server responses (e.g. 10s, 1m).")
 	registerDurationAlias("t", "timeout", &cfg.Timeout)

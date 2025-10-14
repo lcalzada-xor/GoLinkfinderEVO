@@ -39,6 +39,7 @@ Use GoLinkFinder EVO to supercharge your bug bounty methodology, automate URL di
 - 🌐 **Scope-aware crawling** – Constrain discovery to specific domains, respect scopes, and feed data from live URLs, local JS bundles, or Burp XML exports (`-b`).
 - 🔒 **Proxy & TLS control** – Route traffic through Burp/ZAP with `--proxy` or skip verification for lab environments via `--insecure`.
 - ⚙️ **Parallel workers** – Configure worker pools with `--workers` to balance speed, rate limits, and stealth.
+- 🕸️ **Headless rendering** – Use `--render` to execute JavaScript-heavy pages in a Chromium browser and surface dynamic endpoints.
 
 ## Getting started
 
@@ -82,6 +83,8 @@ go run . -i https://scope.example --scope example --scope-include-subdomains --p
 # Crawl a domain and emit CLI, HTML, and JSON outputs simultaneously
 go run . -i https://target.com --output cli,html=report.html,json=findings.json
 
+# Execute JavaScript before parsing to capture dynamically generated endpoints
+go run . -i https://target.com/app --render --timeout 20s
 # Send authenticated requests with repeatable custom headers
 go run . -i https://api.target.com --header "Authorization: Bearer <token>" --header "X-Trace-Id: 12345"
 
@@ -122,6 +125,7 @@ The generated `gf.txt` and `gf.json` files include the resource path, line numbe
 | `-H, --header` | Attach arbitrary HTTP headers (e.g. `-H "Authorization: Bearer token"`). Repeat to send multiple headers. |
 | `--proxy` | Proxy all HTTP/S traffic via the given URL. |
 | `--insecure` | Skip TLS certificate verification (use with caution). |
+| `-R, --render` | Execute pages in a headless Chromium browser before parsing (requires local Chromium/Chrome). |
 | `--timeout` | Configure request timeout in seconds. |
 | `--workers` | Tune concurrency level. Defaults to logical CPU count. |
 | `--gf` | Execute gf patterns stored in `~/.gf`. Accepts comma-separated rule names or `all` to run every JSON file. Findings are saved to `gf.txt` and `gf.json`. |
@@ -133,6 +137,7 @@ Leverage Go's concurrency to adapt to target environments:
 - Set `--workers` lower (e.g., `--workers 5`) when probing fragile or rate-limited APIs.
 - Increase workers (e.g., `--workers 50`) for sprawling JavaScript-heavy single-page applications hosted on CDNs.
 - Combine `--timeout` and `--proxy` to stabilize scans routed through intercepting proxies or VPNs.
+- Only enable `--render` when you need dynamically generated endpoints—the embedded Chromium browser is resource intensive and obeys the same `--timeout` limit as regular fetches.
 
 ## Tips for better recon results
 
@@ -156,7 +161,7 @@ Before submitting a PR:
 
 - [ ] Pre-built binaries for common operating systems.
 - [ ] Regex presets for popular frameworks (Next.js, Angular, Vue).
-- [ ] Optional headless browser integration for dynamic rendering.
+- [x] Headless browser integration for dynamic rendering.
 - [ ] GitHub Action for automated recon workflows.
 
 ## Community & support
