@@ -1,9 +1,11 @@
 package input
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/xml"
 	"errors"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -20,6 +22,21 @@ func ResolveTargets(cfg config.Config) ([]model.Target, error) {
 
 	if strings.HasPrefix(input, "view-source:") {
 		input = input[12:]
+	}
+
+	if input == "-" {
+		baseDir, err := os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+		targets, err := parseTargetsFromReader(os.Stdin, baseDir)
+		if err != nil {
+			return nil, err
+		}
+		if len(targets) == 0 {
+			return nil, errors.New("no targets provided via stdin")
+		}
+		return targets, nil
 	}
 
 	if strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://") ||
@@ -127,8 +144,25 @@ func parseTargetsFromFile(path string) ([]model.Target, bool, error) {
 		return nil, false, err
 	}
 
+	targets, err := parseTargetsFromReader(bytes.NewReader(data), filepath.Dir(path))
+	if err != nil {
+		return nil, false, err
+	}
+
+	if len(targets) == 0 {
+		return nil, false, nil
+	}
+
+	return targets, true, nil
+}
+
+func parseTargetsFromReader(r io.Reader, baseDir string) ([]model.Target, error) {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
 	lines := strings.Split(string(data), "\n")
-	baseDir := filepath.Dir(path)
 	var targets []model.Target
 
 	for _, line := range lines {
@@ -161,16 +195,12 @@ func parseTargetsFromFile(path string) ([]model.Target, bool, error) {
 
 		abs, err := filepath.Abs(candidate)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 		targets = append(targets, model.Target{URL: "file://" + abs})
 	}
 
-	if len(targets) == 0 {
-		return nil, false, nil
-	}
-
-	return targets, true, nil
+	return targets, nil
 }
 
 func isURLInput(value string) bool {

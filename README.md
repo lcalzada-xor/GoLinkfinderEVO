@@ -62,6 +62,14 @@ go run . -i https://target.com --output html=report.html
 
 This command crawls `https://target.com`, prints discovered endpoints to stdout, and saves an interactive HTML report to `report.html`.
 
+You can also stream targets directly via standard input by passing `-` as the input value:
+
+```bash
+echo https://example.com | go run . -i -
+```
+
+When the `-i` flag receives `-`, GoLinkFinder EVO reads targets line-by-line from `STDIN`, applying the same filtering rules as when you provide a file list.
+
 ### Advanced examples
 
 ```bash

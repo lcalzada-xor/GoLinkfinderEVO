@@ -2,6 +2,7 @@ package input
 
 import (
 	"encoding/base64"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -168,5 +169,72 @@ func TestResolveFilePath(t *testing.T) {
 	}
 	if data != contents {
 		t.Fatalf("expected file contents %q, got %q", contents, data)
+	}
+}
+
+func TestParseTargetsFromReader(t *testing.T) {
+	dir := t.TempDir()
+	localFile := filepath.Join(dir, "local.js")
+	if err := os.WriteFile(localFile, []byte("console.log('local');"), 0o644); err != nil {
+		t.Fatalf("write local file: %v", err)
+	}
+
+	input := strings.Join([]string{
+		"https://example.com/app.js",
+		"# comment",
+		"",
+		"view-source:https://example.com/another.js",
+		filepath.Base(localFile),
+	}, "\n")
+
+	targets, err := parseTargetsFromReader(strings.NewReader(input), dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(targets) != 3 {
+		t.Fatalf("expected 3 targets, got %d", len(targets))
+	}
+
+	if targets[0].URL != "https://example.com/app.js" {
+		t.Fatalf("unexpected first target: %q", targets[0].URL)
+	}
+
+	var (
+		seenFile       bool
+		seenViewSource bool
+	)
+	for _, target := range targets {
+		if strings.HasPrefix(target.URL, "file://") {
+			seenFile = true
+		}
+		if target.URL == "https://example.com/another.js" {
+			seenViewSource = true
+		}
+	}
+
+	if !seenFile {
+		t.Fatalf("expected a file target in the list, got %#v", targets)
+	}
+	if !seenViewSource {
+		t.Fatalf("expected view-source target to be normalized, got %#v", targets)
+	}
+}
+
+var errBoom = errors.New("boom")
+
+type failingReader struct{}
+
+func (f failingReader) Read(_ []byte) (int, error) {
+	return 0, errBoom
+}
+
+func TestParseTargetsFromReaderError(t *testing.T) {
+	_, err := parseTargetsFromReader(failingReader{}, t.TempDir())
+	if err == nil {
+		t.Fatalf("expected error from reader")
+	}
+	if !errors.Is(err, errBoom) {
+		t.Fatalf("expected propagated error, got %v", err)
 	}
 }
