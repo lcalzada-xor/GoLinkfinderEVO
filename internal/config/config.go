@@ -15,7 +15,6 @@ import (
 
 // Config contains runtime configuration provided via flags.
 type Config struct {
-	Domain                 bool
 	Recursive              int  // 0 = disabled, -1 = unlimited depth, >0 = max depth
 	Scope                  string
 	Input                  string
@@ -100,7 +99,6 @@ func ParseFlags() (Config, error) {
 		fmt.Fprintf(out, "Usage: %s [OPTIONS]\n\n", os.Args[0])
 		fmt.Fprintln(out, "Options:")
 
-		printOption(out, "domain", "d", "", "Recursively parse JavaScript resources discovered on the provided domain (DEPRECATED: use --recursive).", "")
 		printOption(out, "recursive", "", "int", "Recursively parse JavaScript resources with max depth (0=disabled, -1=unlimited, >0=max depth).", "0")
 		printOption(out, "scope", "s", "string", "Restrict recursive JavaScript fetching to the specified domain (e.g. example.com).", "")
 		printOption(out, "scope-include-subdomains", "", "", "When used with --scope, also allow subdomains of the provided domain.", "")
@@ -117,9 +115,6 @@ func ParseFlags() (Config, error) {
 		printOption(out, "workers", "", "int", "Maximum number of concurrent fetch operations.", strconv.Itoa(cfg.Workers))
 		printOption(out, "gf", "", "string", "Comma separated list of gf rules located in ~/.gf or 'all' to run every rule.", "")
 	}
-
-	flag.BoolVar(&cfg.Domain, "domain", false, "Recursively parse JavaScript resources discovered on the provided domain (DEPRECATED: use --recursive).")
-	registerBoolAlias("d", "domain", &cfg.Domain)
 
 	flag.IntVar(&cfg.Recursive, "recursive", 0, "Recursively parse JavaScript resources with max depth (0=disabled, -1=unlimited, >0=max depth).")
 
@@ -212,11 +207,6 @@ func ParseFlags() (Config, error) {
 
 	if cfg.Recursive < -1 {
 		return cfg, errors.New("--recursive must be at least -1 (-1=unlimited, 0=disabled, >0=max depth)")
-	}
-
-	// Handle backward compatibility: if --domain is used without --recursive, enable recursive mode
-	if cfg.Domain && cfg.Recursive == 0 {
-		cfg.Recursive = -1 // unlimited depth for backward compatibility
 	}
 
 	return cfg, nil

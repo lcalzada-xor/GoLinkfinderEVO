@@ -172,7 +172,7 @@ func main() {
 				reports = append(reports, report)
 				reportsMu.Unlock()
 
-				if (cfg.Domain || cfg.Recursive != 0) && task.visited != nil {
+				if cfg.Recursive != 0 && task.visited != nil {
 					processDomain(ctx, cfg, task.target.URL, endpoints, task.visited, enqueue, task.depth)
 				}
 
@@ -191,7 +191,7 @@ func main() {
 		}
 
 		task := resourceTask{target: t, depth: depth}
-		if cfg.Domain || cfg.Recursive != 0 {
+		if cfg.Recursive != 0 {
 			task.visited = newVisitedSet()
 		}
 		enqueue(task)
