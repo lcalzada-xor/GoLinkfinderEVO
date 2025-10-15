@@ -126,7 +126,7 @@ func TestFetchAppliesCustomHeaders(t *testing.T) {
 		},
 	}
 
-	if _, err := Fetch(server.URL, cfg); err != nil {
+	if _, err := Fetch(context.Background(), server.URL, cfg); err != nil {
 		t.Fatalf("Fetch returned error: %v", err)
 	}
 }

@@ -10,7 +10,7 @@ import (
 )
 
 func TestProcessDomainMaxDepth(t *testing.T) {
-	cfg := config.Config{MaxDepth: 1}
+	cfg := config.Config{Recursive: 1}
 	visited := newVisitedSet()
 
 	endpoints := []model.Endpoint{
@@ -26,7 +26,7 @@ func TestProcessDomainMaxDepth(t *testing.T) {
 		tasks = append(tasks, task)
 	}
 
-	processDomain(context.Background(), cfg, "https://example.com/index.js", endpoints, visited, enqueue, cfg.MaxDepth)
+	processDomain(context.Background(), cfg, "https://example.com/index.js", endpoints, visited, enqueue, cfg.Recursive)
 
 	if len(tasks) != len(endpoints) {
 		t.Fatalf("expected %d tasks, got %d", len(endpoints), len(tasks))
@@ -111,7 +111,7 @@ func TestProcessDomainScopeFiltering(t *testing.T) {
 				tasks = append(tasks, task)
 			}
 
-			processDomain(context.Background(), cfg, base, endpoints, visited, enqueue, 0)
+			processDomain(context.Background(), cfg, base, endpoints, visited, enqueue, -1)
 
 			if len(tasks) != len(tt.want) {
 				t.Fatalf("expected %d tasks, got %d", len(tt.want), len(tasks))

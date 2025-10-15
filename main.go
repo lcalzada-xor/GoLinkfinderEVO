@@ -172,7 +172,7 @@ func main() {
 				reports = append(reports, report)
 				reportsMu.Unlock()
 
-				if cfg.Domain && task.visited != nil {
+				if (cfg.Domain || cfg.Recursive != 0) && task.visited != nil {
 					processDomain(ctx, cfg, task.target.URL, endpoints, task.visited, enqueue, task.depth)
 				}
 
@@ -182,8 +182,16 @@ func main() {
 	}
 
 	for _, t := range targets {
-		task := resourceTask{target: t, depth: cfg.MaxDepth}
-		if cfg.Domain {
+		// Initialize depth based on recursive mode
+		depth := 0
+		if cfg.Recursive == -1 {
+			depth = -1 // unlimited
+		} else if cfg.Recursive > 0 {
+			depth = cfg.Recursive
+		}
+
+		task := resourceTask{target: t, depth: depth}
+		if cfg.Domain || cfg.Recursive != 0 {
 			task.visited = newVisitedSet()
 		}
 		enqueue(task)
@@ -262,13 +270,21 @@ func processDomain(ctx context.Context, cfg config.Config, baseResource string, 
 		return
 	}
 
-	if cfg.MaxDepth > 0 {
-		if depth <= 0 {
-			fmt.Printf("Maximum depth (%d) reached for %s\n", cfg.MaxDepth, baseResource)
-			return
-		}
-		depth--
+	// depth == 0 means recursion is disabled
+	if depth == 0 {
+		return
 	}
+
+	// Calculate next depth: -1 = unlimited (stays -1), >0 = decrement
+	nextDepth := depth
+	if depth > 0 {
+		nextDepth = depth - 1
+		if nextDepth == 0 {
+			// This was the last level, print message after processing
+			defer fmt.Printf("Maximum depth reached for %s\n", baseResource)
+		}
+	}
+	// depth == -1 means unlimited, nextDepth stays -1
 
 	for _, ep := range endpoints {
 		if ctx.Err() != nil {
@@ -292,7 +308,7 @@ func processDomain(ctx context.Context, cfg config.Config, baseResource string, 
 			target:     model.Target{URL: resolved},
 			visited:    visited,
 			fromDomain: true,
-			depth:      depth,
+			depth:      nextDepth,
 		})
 	}
 }
