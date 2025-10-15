@@ -8,6 +8,18 @@ import (
 	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/parser"
 )
 
+// ResourceType represents the type of resource discovered
+type ResourceType int
+
+const (
+	// ResourceUnknown represents an unrecognized resource type
+	ResourceUnknown ResourceType = iota
+	// ResourceJavaScript represents a JavaScript file
+	ResourceJavaScript
+	// ResourceSitemap represents an XML sitemap
+	ResourceSitemap
+)
+
 // CheckURL validates a JS endpoint and resolves it to an absolute URL based on the provided base.
 func CheckURL(raw, base string) (string, bool) {
 	candidate := strings.TrimSpace(raw)
@@ -73,6 +85,124 @@ func CheckURL(raw, base string) (string, bool) {
 	}
 
 	return resolved.String(), true
+}
+
+// DetectResourceType determines the type of resource based on the URL.
+func DetectResourceType(raw string) ResourceType {
+	candidate := strings.TrimSpace(raw)
+	if candidate == "" {
+		return ResourceUnknown
+	}
+
+	// Remove query parameters and fragments for extension checking
+	trimmed := candidate
+	if idx := strings.IndexAny(trimmed, "?#"); idx != -1 {
+		trimmed = trimmed[:idx]
+	}
+
+	lowerTrimmed := strings.ToLower(trimmed)
+
+	// Check for sitemap indicators
+	if strings.HasSuffix(lowerTrimmed, ".xml") || strings.Contains(lowerTrimmed, "sitemap") {
+		return ResourceSitemap
+	}
+
+	// Check for JavaScript extensions
+	if parser.ScriptExtensionRegex().MatchString(lowerTrimmed) {
+		// Filter out common dependencies
+		parts := strings.Split(lowerTrimmed, "/")
+		for _, p := range parts {
+			if p == "node_modules" || p == "jquery.js" {
+				return ResourceUnknown
+			}
+		}
+		return ResourceJavaScript
+	}
+
+	return ResourceUnknown
+}
+
+// IsSitemapURL checks if the given URL appears to be a sitemap XML file.
+// Deprecated: Use DetectResourceType instead.
+func IsSitemapURL(raw string) bool {
+	return DetectResourceType(raw) == ResourceSitemap
+}
+
+// ResolveURL validates and resolves a resource URL based on its type and the provided base.
+// It returns the resolved URL, the resource type, and a boolean indicating success.
+func ResolveURL(raw, base string, allowedTypes ...ResourceType) (string, ResourceType, bool) {
+	candidate := strings.TrimSpace(raw)
+	if candidate == "" {
+		return "", ResourceUnknown, false
+	}
+
+	resourceType := DetectResourceType(candidate)
+	if resourceType == ResourceUnknown {
+		return "", ResourceUnknown, false
+	}
+
+	// Check if this resource type is allowed
+	if len(allowedTypes) > 0 {
+		allowed := false
+		for _, allowedType := range allowedTypes {
+			if resourceType == allowedType {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return "", resourceType, false
+		}
+	}
+
+	ref, err := url.Parse(candidate)
+	if err != nil {
+		return "", resourceType, false
+	}
+
+	if ref.IsAbs() {
+		return ref.String(), resourceType, true
+	}
+
+	if strings.HasPrefix(candidate, "//") {
+		resolved := "https:" + candidate
+		return resolved, resourceType, true
+	}
+
+	baseURL, err := url.Parse(base)
+	if err != nil {
+		return "", resourceType, false
+	}
+
+	if baseURL.Scheme == "" {
+		baseURL.Scheme = "https"
+	}
+
+	// Ensure the base URL represents a directory for relative resolution.
+	if baseURL.Path != "" && !strings.HasSuffix(baseURL.Path, "/") {
+		dir := path.Dir(baseURL.Path)
+		if dir == "." {
+			dir = "/"
+		}
+		if !strings.HasSuffix(dir, "/") {
+			dir += "/"
+		}
+		baseURL.Path = dir
+	}
+
+	resolved := baseURL.ResolveReference(ref)
+	if resolved == nil || resolved.Scheme == "" {
+		return "", resourceType, false
+	}
+
+	return resolved.String(), resourceType, true
+}
+
+// CheckSitemapURL validates and resolves a sitemap URL based on the provided base.
+// Deprecated: Use ResolveURL with ResourceSitemap filter instead.
+func CheckSitemapURL(raw, base string) (string, bool) {
+	resolved, _, ok := ResolveURL(raw, base, ResourceSitemap)
+	return resolved, ok
 }
 
 // WithinScope reports whether the provided resource URL belongs to the supplied scope domain.

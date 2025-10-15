@@ -97,22 +97,32 @@ func ParseFlags() (Config, error) {
 	flag.Usage = func() {
 		out := flag.CommandLine.Output()
 		fmt.Fprintf(out, "Usage: %s [OPTIONS]\n\n", os.Args[0])
-		fmt.Fprintln(out, "Options:")
+		fmt.Fprintln(out, "Core Options:")
 
-		printOption(out, "recursive", "", "int", "Recursively parse JavaScript resources with max depth (0=disabled, -1=unlimited, >0=max depth).", "0")
-		printOption(out, "scope", "s", "string", "Restrict recursive JavaScript fetching to the specified domain (e.g. example.com).", "")
-		printOption(out, "scope-include-subdomains", "", "", "When used with --scope, also allow subdomains of the provided domain.", "")
 		printOption(out, "input", "i", "string", "URL, file or folder to analyse. For folders you can use wildcards (e.g. '/*.js').", "")
-		printOption(out, "output", "o", "string", "Configure one or more outputs (e.g. 'cli', 'html=report.html', 'gf.txt=findings.txt'). May be repeated or comma separated.", "cli")
+		printOption(out, "output", "o", "string", "Configure one or more outputs (e.g. 'cli', 'html=report.html', 'json=data.json'). May be repeated or comma separated.", "cli")
+
+		fmt.Fprintln(out, "\nFiltering Options:")
 		printOption(out, "regex", "r", "string", "Only report endpoints matching the provided regular expression (e.g. '^/api/').", "")
+		printOption(out, "recursive", "", "int", "Recursively parse JavaScript and sitemap resources with max depth (0=disabled, -1=unlimited, >0=max depth).", "0")
+		printOption(out, "scope", "s", "string", "Restrict recursive fetching to the specified domain (e.g. example.com).", "")
+		printOption(out, "scope-include-subdomains", "", "", "When used with --scope, also allow subdomains of the provided domain.", "")
+
+		fmt.Fprintln(out, "\nInput Format Options:")
 		printOption(out, "burp", "b", "", "Treat the input as a Burp Suite XML export.", "")
+		printOption(out, "render", "R", "", "Execute pages with a headless browser before extracting endpoints.", "")
+
+		fmt.Fprintln(out, "\nHTTP Options:")
 		printOption(out, "cookies", "c", "string", "Include cookies when fetching authenticated JavaScript files.", "")
 		printOption(out, "header", "H", "\"Name: Value\"", "Attach custom HTTP headers to outbound requests. May be repeated.", "")
 		printOption(out, "proxy", "", "string", "Forward HTTP requests through the provided proxy (e.g. http://127.0.0.1:8080).", "")
 		printOption(out, "insecure", "", "", "Skip TLS certificate verification when fetching HTTPS resources.", "")
-		printOption(out, "render", "R", "", "Execute pages with a headless browser before extracting endpoints.", "")
 		printOption(out, "timeout", "t", "duration", "Maximum time to wait for server responses (e.g. 10s, 1m).", cfg.Timeout.String())
+
+		fmt.Fprintln(out, "\nPerformance Options:")
 		printOption(out, "workers", "", "int", "Maximum number of concurrent fetch operations.", strconv.Itoa(cfg.Workers))
+
+		fmt.Fprintln(out, "\nPattern Matching Options:")
 		printOption(out, "gf", "", "string", "Comma separated list of gf rules located in ~/.gf or 'all' to run every rule.", "")
 	}
 

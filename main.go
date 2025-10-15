@@ -19,6 +19,13 @@ import (
 	"github.com/lcalzada-xor/GoLinkfinderEVO/internal/parser"
 )
 
+const (
+	// RecursionDisabled indicates that recursion is turned off
+	RecursionDisabled = 0
+	// RecursionUnlimited indicates unlimited recursion depth
+	RecursionUnlimited = -1
+)
+
 func main() {
 	cfg, err := config.ParseFlags()
 	if err != nil {
@@ -172,8 +179,8 @@ func main() {
 				reports = append(reports, report)
 				reportsMu.Unlock()
 
-				if cfg.Recursive != 0 && task.visited != nil {
-					processDomain(ctx, cfg, task.target.URL, endpoints, task.visited, enqueue, task.depth)
+				if cfg.Recursive != RecursionDisabled && task.visited != nil {
+					processDiscoveredResources(ctx, cfg, task.target.URL, endpoints, task.visited, enqueue, task.depth)
 				}
 
 				taskWg.Done()
@@ -183,15 +190,22 @@ func main() {
 
 	for _, t := range targets {
 		// Initialize depth based on recursive mode
-		depth := 0
-		if cfg.Recursive == -1 {
-			depth = -1 // unlimited
-		} else if cfg.Recursive > 0 {
+		depth := RecursionDisabled
+		if cfg.Recursive == RecursionUnlimited {
+			depth = RecursionUnlimited
+		} else if cfg.Recursive > RecursionDisabled {
 			depth = cfg.Recursive
 		}
 
-		task := resourceTask{target: t, depth: depth}
-		if cfg.Recursive != 0 {
+		// Detect resource type from the initial target URL
+		rtype := network.DetectResourceType(t.URL)
+
+		task := resourceTask{
+			target: t,
+			depth:  depth,
+			rtype:  rtype,
+		}
+		if cfg.Recursive != RecursionDisabled {
 			task.visited = newVisitedSet()
 		}
 		enqueue(task)
@@ -264,51 +278,58 @@ func resolveContent(ctx context.Context, t model.Target, cfg config.Config) (str
 	return network.Fetch(ctx, t.URL, cfg)
 }
 
-func processDomain(ctx context.Context, cfg config.Config, baseResource string, endpoints []model.Endpoint, visited *visitedSet,
+// processDiscoveredResources handles recursive processing of discovered endpoints.
+// It validates, filters, and enqueues new resources for processing based on the configured recursion depth.
+func processDiscoveredResources(ctx context.Context, cfg config.Config, baseResource string, endpoints []model.Endpoint, visited *visitedSet,
 	enqueue func(resourceTask), depth int) {
 	if visited == nil {
 		return
 	}
 
-	// depth == 0 means recursion is disabled
-	if depth == 0 {
+	// Recursion is disabled
+	if depth == RecursionDisabled {
 		return
 	}
 
-	// Calculate next depth: -1 = unlimited (stays -1), >0 = decrement
+	// Calculate next depth level
 	nextDepth := depth
-	if depth > 0 {
+	if depth > RecursionDisabled {
 		nextDepth = depth - 1
-		if nextDepth == 0 {
-			// This was the last level, print message after processing
-			defer fmt.Printf("Maximum depth reached for %s\n", baseResource)
+		if nextDepth == RecursionDisabled {
+			// This was the last recursion level, print message after processing
+			defer fmt.Printf("Maximum recursion depth reached for %s\n", baseResource)
 		}
 	}
-	// depth == -1 means unlimited, nextDepth stays -1
+	// depth == RecursionUnlimited stays RecursionUnlimited
 
 	for _, ep := range endpoints {
 		if ctx.Err() != nil {
 			return
 		}
 
-		resolved, ok := network.CheckURL(ep.Link, baseResource)
+		// Try to resolve the URL as any supported resource type (JavaScript or Sitemap)
+		resolved, resourceType, ok := network.ResolveURL(ep.Link, baseResource, network.ResourceJavaScript, network.ResourceSitemap)
 		if !ok {
 			continue
 		}
 
+		// Apply scope filtering if configured
 		if cfg.Scope != "" && !network.WithinScope(resolved, cfg.Scope, cfg.ScopeIncludeSubdomains) {
 			continue
 		}
 
+		// Skip if already visited
 		if !visited.Add(resolved) {
 			continue
 		}
 
+		// Enqueue the resource for processing
 		enqueue(resourceTask{
 			target:     model.Target{URL: resolved},
 			visited:    visited,
 			fromDomain: true,
 			depth:      nextDepth,
+			rtype:      resourceType,
 		})
 	}
 }
@@ -334,6 +355,7 @@ type resourceTask struct {
 	visited    *visitedSet
 	fromDomain bool
 	depth      int
+	rtype      network.ResourceType
 }
 
 type visitedSet struct {
