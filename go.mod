@@ -1,6 +1,8 @@
 module github.com/lcalzada-xor/GoLinkfinderEVO
 
-go 1.21
+go 1.24
+
+toolchain go1.24.4
 
 require (
 	github.com/andybalholm/brotli v1.1.0

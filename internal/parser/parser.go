@@ -112,6 +112,8 @@ func buildRawRegex(body string) string {
     '` + body + `'
     |
     ` + "`" + body + "`" + `
+    |
+    <(?:loc|url)>([^<]+)</(?:loc|url)>
   )
 
 `
