@@ -92,8 +92,6 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	progress := output.NewProgressLog(os.Stderr, os.Args[0])
-
 	tasks := make(chan resourceTask, cfg.Workers)
 	var taskWg sync.WaitGroup
 	var workerWg sync.WaitGroup
@@ -137,13 +135,9 @@ func main() {
 			defer workerWg.Done()
 			for task := range tasks {
 				if ctx.Err() != nil {
-					handle := progress.Start(describeTask(task))
-					handle.Cancel("context cancelled")
 					taskWg.Done()
 					continue
 				}
-
-				handle := progress.Start(describeTask(task))
 
 				if task.fromDomain {
 					fmt.Printf("Running against: %s\n\n", task.target.URL)
@@ -151,20 +145,25 @@ func main() {
 
 				content, err := resolveContent(ctx, task.target, cfg)
 				if err != nil {
-					switch {
-					case network.IsTimeoutError(err):
-						handle.Fail("timeout")
+					if network.IsTimeoutError(err) {
 						fmt.Printf("Request timed out for: %s\n", task.target.URL)
-					case network.IsDNSOrNetworkError(err):
-						handle.Fail("network error")
-						fmt.Printf("DNS or network error for: %s (host may not exist or be unreachable)\n", task.target.URL)
-					case task.fromDomain:
-						handle.Fail("invalid input")
-						fmt.Printf("Invalid input defined or SSL error for: %s\n", task.target.URL)
-					default:
-						handle.Fail("unreachable")
-						recordError(fmt.Errorf("invalid input defined or SSL error: %w", err))
+						taskWg.Done()
+						continue
 					}
+
+					if network.IsDNSOrNetworkError(err) {
+						fmt.Printf("DNS or network error for: %s (host may not exist or be unreachable)\n", task.target.URL)
+						taskWg.Done()
+						continue
+					}
+
+					if task.fromDomain {
+						fmt.Printf("Invalid input defined or SSL error for: %s\n", task.target.URL)
+						taskWg.Done()
+						continue
+					}
+
+					recordError(fmt.Errorf("invalid input defined or SSL error: %w", err))
 					taskWg.Done()
 					continue
 				}
@@ -184,7 +183,6 @@ func main() {
 					processDiscoveredResources(ctx, cfg, task.target.URL, endpoints, task.visited, enqueue, task.depth)
 				}
 
-				handle.Success(fmt.Sprintf("%d endpoints", len(endpoints)))
 				taskWg.Done()
 			}
 		}()
@@ -219,7 +217,6 @@ func main() {
 	}()
 
 	workerWg.Wait()
-	progress.Stop()
 
 	if firstErr != nil {
 		exitWithError(firstErr)
@@ -279,11 +276,6 @@ func resolveContent(ctx context.Context, t model.Target, cfg config.Config) (str
 	}
 
 	return network.Fetch(ctx, t.URL, cfg)
-}
-
-func processDomain(ctx context.Context, cfg config.Config, baseResource string, endpoints []model.Endpoint, visited *visitedSet,
-	enqueue func(resourceTask), depth int) {
-	processDiscoveredResources(ctx, cfg, baseResource, endpoints, visited, enqueue, depth)
 }
 
 // processDiscoveredResources handles recursive processing of discovered endpoints.
@@ -364,18 +356,6 @@ type resourceTask struct {
 	fromDomain bool
 	depth      int
 	rtype      network.ResourceType
-}
-
-func describeTask(task resourceTask) string {
-	kind := "resource"
-	switch task.rtype {
-	case network.ResourceJavaScript:
-		kind = "js"
-	case network.ResourceSitemap:
-		kind = "sitemap"
-	}
-
-	return fmt.Sprintf("%s %s", kind, task.target.URL)
 }
 
 type visitedSet struct {
