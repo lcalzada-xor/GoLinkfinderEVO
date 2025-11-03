@@ -31,6 +31,7 @@ type Config struct {
 	Outputs                []OutputTarget
 	GFAll                  bool
 	GFPatterns             []string
+	GFPath                 string
 }
 
 // OutputFormat represents a supported output channel.
@@ -124,6 +125,7 @@ func ParseFlags() (Config, error) {
 
 		fmt.Fprintln(out, "\nPattern Matching Options:")
 		printOption(out, "gf", "", "string", "Comma separated list of gf rules located in ~/.gf or 'all' to run every rule.", "")
+		printOption(out, "gf-path", "", "string", "Custom directory path for gf templates (default: ~/.gf).", "")
 	}
 
 	flag.IntVar(&cfg.Recursive, "recursive", 0, "Recursively parse JavaScript resources with max depth (0=disabled, -1=unlimited, >0=max depth).")
@@ -172,6 +174,7 @@ func ParseFlags() (Config, error) {
 
 	var gfRaw string
 	flag.StringVar(&gfRaw, "gf", "", "Comma separated list of gf rules located in ~/.gf or 'all' to run every rule.")
+	flag.StringVar(&cfg.GFPath, "gf-path", "", "Custom directory path for gf templates (default: ~/.gf).")
 
 	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
 		return cfg, err

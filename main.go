@@ -225,7 +225,7 @@ func main() {
 	meta := output.BuildMetadata(reports, generatedAt)
 
 	if cfg.GFAll || len(cfg.GFPatterns) > 0 {
-		definitions, err := gf.LoadDefinitions(cfg.GFPatterns, cfg.GFAll)
+		definitions, err := gf.LoadDefinitions(cfg.GFPatterns, cfg.GFAll, cfg.GFPath)
 		if err != nil {
 			exitWithError(fmt.Errorf("unable to load gf rules: %w", err))
 		}

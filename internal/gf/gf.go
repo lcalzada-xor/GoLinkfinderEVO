@@ -28,11 +28,21 @@ type Finding struct {
 	Rules    []string `json:"rules"`
 }
 
-// LoadDefinitions loads gf rule definitions from the ~/.gf directory.
-func LoadDefinitions(names []string, useAll bool) ([]Definition, error) {
-	dir, err := defaultDir()
-	if err != nil {
-		return nil, err
+// LoadDefinitions loads gf rule definitions from the provided directory or ~/.gf if customPath is empty.
+func LoadDefinitions(names []string, useAll bool, customPath string) ([]Definition, error) {
+	var dir string
+	var err error
+
+	if customPath != "" {
+		dir = customPath
+		if _, err := os.Stat(dir); err != nil {
+			return nil, fmt.Errorf("gf directory not found at %s: %w", dir, err)
+		}
+	} else {
+		dir, err = defaultDir()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return loadDefinitionsFromDir(dir, names, useAll)

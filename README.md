@@ -104,6 +104,9 @@ go run . -i https://target.com --gf jwt,urls
 
 # Execute every rule found inside ~/.gf
 go run . -i https://target.com --gf all
+
+# Use a custom directory for gf templates
+go run . -i https://target.com --gf all --gf-path /custom/path/to/gf
 ```
 
 The generated `gf.txt` and `gf.json` files include the resource path, line number, matching evidence, and the rule responsible for each finding.
@@ -129,6 +132,7 @@ The generated `gf.txt` and `gf.json` files include the resource path, line numbe
 | `--timeout` | Configure request timeout in seconds. |
 | `--workers` | Tune concurrency level. Defaults to logical CPU count. |
 | `--gf` | Execute gf patterns stored in `~/.gf`. Accepts comma-separated rule names or `all` to run every JSON file. Findings are saved to `gf.txt` and `gf.json`. |
+| `--gf-path` | Custom directory path for gf templates (default: `~/.gf`). |
 
 ## Performance tuning
 
