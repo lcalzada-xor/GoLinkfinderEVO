@@ -38,7 +38,7 @@ func TestWriteJSON(t *testing.T) {
 		TotalEndpoints: TotalEndpoints(reports),
 	}
 
-	if err := WriteJSON(path, reports, meta); err != nil {
+	if err := WriteJSON(path, reports, meta, nil, nil); err != nil {
 		t.Fatalf("WriteJSON() error = %v", err)
 	}
 

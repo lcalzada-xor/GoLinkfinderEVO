@@ -33,12 +33,12 @@ func main() {
 	}
 
 	var (
-		mode       output.Mode
-		htmlPath   string
-		jsonPath   string
-		rawPath    string
-		gfTextPath = gf.TextFilename
-		gfJSONPath = gf.JSONFilename
+		mode          output.Mode
+		htmlPath      string
+		jsonPath      string
+		rawPath       string
+		hasJSONOutput bool
+		hasRawOutput  bool
 	)
 
 	for _, target := range cfg.Outputs {
@@ -50,16 +50,15 @@ func main() {
 			htmlPath = target.Path
 		case config.OutputJSON:
 			jsonPath = target.Path
+			hasJSONOutput = true
 		case config.OutputRaw:
 			rawPath = target.Path
-		case config.OutputGFText:
-			gfTextPath = target.Path
-		case config.OutputGFJSON:
-			gfJSONPath = target.Path
+			hasRawOutput = true
 		}
 	}
 
-	if mode == 0 {
+	// Only default to CLI if no other outputs are specified
+	if mode == 0 && !hasJSONOutput && !hasRawOutput {
 		mode = output.ModeCLI
 	}
 
@@ -224,38 +223,48 @@ func main() {
 
 	meta := output.BuildMetadata(reports, generatedAt)
 
+	// Process GF pattern matching if enabled
+	var gfRules []string
+	var gfFindings []output.GFFinding
+
 	if cfg.GFAll || len(cfg.GFPatterns) > 0 {
 		definitions, err := gf.LoadDefinitions(cfg.GFPatterns, cfg.GFAll, cfg.GFPath)
 		if err != nil {
 			exitWithError(fmt.Errorf("unable to load gf rules: %w", err))
 		}
 
-		findings := gf.FindInReports(reports, definitions)
-		rules := gf.RuleNames(definitions)
+		rawFindings := gf.FindInReports(reports, definitions)
+		gfRules = gf.RuleNames(definitions)
 
-		if err := gf.WriteText(gfTextPath, generatedAt, rules, findings); err != nil {
-			exitWithError(fmt.Errorf("unable to write gf text findings: %w", err))
-		}
-
-		if err := gf.WriteJSON(gfJSONPath, generatedAt, rules, findings); err != nil {
-			exitWithError(fmt.Errorf("unable to write gf JSON findings: %w", err))
+		// Convert gf.Finding to output.GFFinding
+		gfFindings = make([]output.GFFinding, len(rawFindings))
+		for i, finding := range rawFindings {
+			gfFindings[i] = output.GFFinding{
+				Resource: finding.Resource,
+				Line:     finding.Line,
+				Evidence: finding.Evidence,
+				Context:  finding.Context,
+				Rules:    finding.Rules,
+			}
 		}
 	}
 
+	// Write outputs
 	if rawPath != "" {
 		if err := output.WriteRaw(rawPath, reports, meta); err != nil {
 			exitWithError(fmt.Errorf("unable to write raw output: %w", err))
 		}
 	}
 
-	if jsonPath != "" {
-		if err := output.WriteJSON(jsonPath, reports, meta); err != nil {
+	if hasJSONOutput {
+		// Write JSON to file or stdout (jsonPath can be empty for stdout)
+		if err := output.WriteJSON(jsonPath, reports, meta, gfRules, gfFindings); err != nil {
 			exitWithError(fmt.Errorf("unable to write JSON output: %w", err))
 		}
 	}
 
 	if mode.Includes(output.ModeHTML) {
-		if err := output.SaveHTML(htmlBuilder.String(), htmlPath, meta); err != nil {
+		if err := output.SaveHTML(htmlBuilder.String(), htmlPath, meta, gfRules, gfFindings); err != nil {
 			fmt.Fprintf(os.Stderr, "Output can't be saved in %s due to exception: %v\n", htmlPath, err)
 			os.Exit(1)
 		}
@@ -263,6 +272,9 @@ func main() {
 
 	if mode.Includes(output.ModeCLI) {
 		output.PrintSummary(meta)
+		if len(gfFindings) > 0 {
+			output.PrintGFFindings(gfRules, gfFindings)
+		}
 	}
 }
 

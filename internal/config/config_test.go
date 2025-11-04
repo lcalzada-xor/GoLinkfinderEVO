@@ -38,8 +38,9 @@ func TestParseFlagsJSON(t *testing.T) {
 		t.Fatalf("expected JSON path to be %q, got %q", "report.json", jsonTarget.Path)
 	}
 
-	if _, ok := findOutput(cfg.Outputs, OutputCLI); !ok {
-		t.Fatalf("expected CLI output to be configured by default")
+	// CLI is not added by default when other outputs are specified
+	if _, ok := findOutput(cfg.Outputs, OutputCLI); ok {
+		t.Fatalf("expected CLI output NOT to be configured when JSON is specified")
 	}
 }
 
@@ -58,7 +59,7 @@ func TestParseFlagsGFOutputs(t *testing.T) {
 
 	os.Args = []string{
 		oldArgs[0],
-		"--output", "cli,gf.txt=findings.txt,gf.json=findings.json",
+		"--output", "cli,json",
 		"-i", "https://example.com", "--gf", "all",
 	}
 
@@ -67,22 +68,26 @@ func TestParseFlagsGFOutputs(t *testing.T) {
 		t.Fatalf("ParseFlags() returned error: %v", err)
 	}
 
-	gfText, ok := findOutput(cfg.Outputs, OutputGFText)
+	// Verify CLI output is configured
+	_, ok := findOutput(cfg.Outputs, OutputCLI)
 	if !ok {
-		t.Fatalf("expected gf text output to be configured")
+		t.Fatalf("expected CLI output to be configured")
 	}
 
-	if gfText.Path != "findings.txt" {
-		t.Fatalf("expected gf text path to be %q, got %q", "findings.txt", gfText.Path)
-	}
-
-	gfJSON, ok := findOutput(cfg.Outputs, OutputGFJSON)
+	// Verify JSON output is configured
+	jsonOut, ok := findOutput(cfg.Outputs, OutputJSON)
 	if !ok {
-		t.Fatalf("expected gf JSON output to be configured")
+		t.Fatalf("expected JSON output to be configured")
 	}
 
-	if gfJSON.Path != "findings.json" {
-		t.Fatalf("expected gf JSON path to be %q, got %q", "findings.json", gfJSON.Path)
+	// JSON without path should be empty (stdout)
+	if jsonOut.Path != "" {
+		t.Fatalf("expected JSON path to be empty (stdout), got %q", jsonOut.Path)
+	}
+
+	// Verify GF is enabled
+	if !cfg.GFAll {
+		t.Fatalf("expected GF all to be enabled")
 	}
 }
 

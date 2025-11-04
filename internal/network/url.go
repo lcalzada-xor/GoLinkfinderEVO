@@ -122,12 +122,6 @@ func DetectResourceType(raw string) ResourceType {
 	return ResourceUnknown
 }
 
-// IsSitemapURL checks if the given URL appears to be a sitemap XML file.
-// Deprecated: Use DetectResourceType instead.
-func IsSitemapURL(raw string) bool {
-	return DetectResourceType(raw) == ResourceSitemap
-}
-
 // ResolveURL validates and resolves a resource URL based on its type and the provided base.
 // It returns the resolved URL, the resource type, and a boolean indicating success.
 func ResolveURL(raw, base string, allowedTypes ...ResourceType) (string, ResourceType, bool) {
@@ -196,13 +190,6 @@ func ResolveURL(raw, base string, allowedTypes ...ResourceType) (string, Resourc
 	}
 
 	return resolved.String(), resourceType, true
-}
-
-// CheckSitemapURL validates and resolves a sitemap URL based on the provided base.
-// Deprecated: Use ResolveURL with ResourceSitemap filter instead.
-func CheckSitemapURL(raw, base string) (string, bool) {
-	resolved, _, ok := ResolveURL(raw, base, ResourceSitemap)
-	return resolved, ok
 }
 
 // WithinScope reports whether the provided resource URL belongs to the supplied scope domain.

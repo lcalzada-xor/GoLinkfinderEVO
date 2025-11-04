@@ -34,8 +34,8 @@ Use GoLinkFinder EVO to supercharge your bug bounty methodology, automate URL di
 ## Key features
 
 - 🔍 **Smart pattern matching** – Extract JavaScript endpoints, REST routes, AWS/GCP URLs, JWTs, keys, and more with customizable regex filters.
-- 📄 **Flexible outputs** – Stream matches to stdout, generate HTML reports for presentations, export plain text with `--raw`, or produce machine-readable JSON for integrations.
-- 🧰 **gf rule integration** – Run your favourite [tomnomnom/gf](https://github.com/tomnomnom/gf) patterns against discovered endpoints and export structured findings automatically.
+- 📄 **Flexible outputs** – Stream matches to stdout, generate HTML reports, export plain text with `--raw`, or produce machine-readable JSON (file or stdout). CLI output is suppressed when other outputs are specified.
+- 🧰 **Integrated gf patterns** – Run [tomnomnom/gf](https://github.com/tomnomnom/gf) patterns against discovered endpoints with results integrated directly into CLI, JSON, and HTML outputs.
 - 🌐 **Scope-aware crawling** – Constrain discovery to specific domains, respect scopes, and feed data from live URLs, local JS bundles, or Burp XML exports (`-b`).
 - 🔒 **Proxy & TLS control** – Route traffic through Burp/ZAP with `--proxy` or skip verification for lab environments via `--insecure`.
 - ⚙️ **Parallel workers** – Configure worker pools with `--workers` to balance speed, rate limits, and stealth.
@@ -83,33 +83,49 @@ go run . -i https://scope.example --scope example --scope-include-subdomains --p
 # Crawl a domain and emit CLI, HTML, and JSON outputs simultaneously
 go run . -i https://target.com --output cli,html=report.html,json=findings.json
 
+# Output pure JSON to stdout (perfect for piping to jq or other tools)
+go run . -i https://target.com -o json | jq '.resources[].Endpoints[].Link'
+
 # Execute JavaScript before parsing to capture dynamically generated endpoints
 go run . -i https://target.com/app --render --timeout 20s
+
 # Send authenticated requests with repeatable custom headers
 go run . -i https://api.target.com --header "Authorization: Bearer <token>" --header "X-Trace-Id: 12345"
 
 # Import historical data from a Burp Suite XML export
 go run . -b ./traffic-export.xml --workers 20
+
+# Run gf patterns and get integrated results in JSON
+go run . -i https://target.com --gf jwt,aws-keys -o json > findings_with_secrets.json
 ```
 
 > **Heads-up:** Custom headers often carry sensitive secrets (API keys, bearer tokens, session cookies, etc.). Prefer passing them via environment variables or redacting them in command histories and shared scripts.
 
 ### gf integration
 
-Place your gf JSON definitions inside `~/.gf` (the same convention used by the original tool). Then pass either a comma-separated list of rule names or `all` to execute every JSON file:
+Place your gf JSON definitions inside `~/.gf` (the same convention used by the original gf tool). Pass either a comma-separated list of rule names or `all` to execute every JSON file:
 
 ```bash
-# Run specific gf rules and generate gf.txt / gf.json with matches
+# Run specific gf rules
 go run . -i https://target.com --gf jwt,urls
 
-# Execute every rule found inside ~/.gf
+# Execute all rules in ~/.gf
 go run . -i https://target.com --gf all
 
 # Use a custom directory for gf templates
 go run . -i https://target.com --gf all --gf-path /custom/path/to/gf
+
+# Get gf findings in JSON format (stdout)
+go run . -i https://target.com --gf all -o json
+
+# Generate HTML report with gf findings
+go run . -i https://target.com --gf all -o html=report.html
 ```
 
-The generated `gf.txt` and `gf.json` files include the resource path, line number, matching evidence, and the rule responsible for each finding.
+GF findings are integrated directly into all output formats:
+- **CLI output**: Pattern matching results displayed at the end with resource path, line number, matching evidence, and rules
+- **JSON output**: `gf_findings` section with structured data including rules, total count, and detailed findings
+- **HTML report**: Dedicated "Pattern Matching Results (GF)" section with visual presentation
 
 ## Flags reference
 
@@ -117,9 +133,9 @@ The generated `gf.txt` and `gf.json` files include the resource path, line numbe
 | ---- | ----------- |
 | `-i, --input` | URL, file, glob pattern, or directory to scan. |
 | `-b, --burp` | Parse Burp Suite XML exports as input. |
-| `-o, --output` | Configure outputs. Accepts values like `cli`, `html=report.html`, `json=findings.json`, or `raw=endpoints.txt`. Repeat or comma-separate to combine formats. |
+| `-o, --output` | Configure outputs. Accepts values like `cli`, `html=report.html`, `json=findings.json`, `json` (stdout), or `raw=endpoints.txt`. Repeat or comma-separate to combine formats. When only `json` or `raw` is specified, CLI output is suppressed. |
 | `--raw` | Alias for `--output raw=<file>`. |
-| `--json` | Alias for `--output json=<file>`. |
+| `--json` | Alias for `--output json=<file>`. Use without a path to write JSON to stdout. |
 | `--regex` | Apply an additional regex filter to matches. |
 | `--domain` | Restrict results to the input domain only. |
 | `--scope` | Supply a custom allow-list of domains. |
@@ -131,7 +147,7 @@ The generated `gf.txt` and `gf.json` files include the resource path, line numbe
 | `-R, --render` | Execute pages in a headless Chromium browser before parsing (requires local Chromium/Chrome). |
 | `--timeout` | Configure request timeout in seconds. |
 | `--workers` | Tune concurrency level. Defaults to logical CPU count. |
-| `--gf` | Execute gf patterns stored in `~/.gf`. Accepts comma-separated rule names or `all` to run every JSON file. Findings are saved to `gf.txt` and `gf.json`. |
+| `--gf` | Execute gf patterns stored in `~/.gf`. Accepts comma-separated rule names or `all` to run every JSON file. Findings are integrated into all output formats (CLI, JSON, HTML). |
 | `--gf-path` | Custom directory path for gf templates (default: `~/.gf`). |
 
 ## Performance tuning

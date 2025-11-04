@@ -81,7 +81,7 @@ func AppendHTML(builder *strings.Builder, report ResourceReport) {
 }
 
 // SaveHTML renders the final HTML report to the provided output path.
-func SaveHTML(content, outputPath string, meta Metadata) error {
+func SaveHTML(content, outputPath string, meta Metadata, gfRules []string, gfFindings []GFFinding) error {
 	tpl, err := template.New("output").Parse(templateHTML)
 	if err != nil {
 		return err
@@ -94,12 +94,20 @@ func SaveHTML(content, outputPath string, meta Metadata) error {
 		TotalResources int
 		TotalEndpoints int
 		HasResults     bool
+		GFRules        string
+		GFTotal        int
+		GFFindings     []GFFinding
+		HasGFFindings  bool
 	}{
 		Content:        template.HTML(content),
 		GeneratedAt:    meta.GeneratedAt.Format(time.RFC1123),
 		TotalResources: meta.TotalResources,
 		TotalEndpoints: meta.TotalEndpoints,
 		HasResults:     meta.TotalResources > 0,
+		GFRules:        joinRules(gfRules),
+		GFTotal:        len(gfFindings),
+		GFFindings:     gfFindings,
+		HasGFFindings:  len(gfFindings) > 0,
 	}
 
 	if err := tpl.Execute(&buf, data); err != nil {
@@ -123,6 +131,13 @@ func SaveHTML(content, outputPath string, meta Metadata) error {
 	}
 
 	return nil
+}
+
+func joinRules(rules []string) string {
+	if len(rules) == 0 {
+		return ""
+	}
+	return strings.Join(rules, ", ")
 }
 
 func openInBrowser(path string) {

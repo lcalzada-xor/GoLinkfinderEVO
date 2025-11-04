@@ -15,7 +15,7 @@ import (
 
 // Config contains runtime configuration provided via flags.
 type Config struct {
-	Recursive              int  // 0 = disabled, -1 = unlimited depth, >0 = max depth
+	Recursive              int // 0 = disabled, -1 = unlimited depth, >0 = max depth
 	Scope                  string
 	Input                  string
 	Regex                  string
@@ -42,8 +42,6 @@ const (
 	OutputHTML
 	OutputJSON
 	OutputRaw
-	OutputGFText
-	OutputGFJSON
 )
 
 func (f OutputFormat) String() string {
@@ -56,10 +54,6 @@ func (f OutputFormat) String() string {
 		return "json"
 	case OutputRaw:
 		return "raw"
-	case OutputGFText:
-		return "gf.txt"
-	case OutputGFJSON:
-		return "gf.json"
 	default:
 		return "unknown"
 	}
@@ -67,8 +61,17 @@ func (f OutputFormat) String() string {
 
 func (f OutputFormat) requiresPath() bool {
 	switch f {
-	case OutputHTML, OutputJSON, OutputRaw, OutputGFText, OutputGFJSON:
+	case OutputHTML, OutputRaw:
 		return true
+	default:
+		return false
+	}
+}
+
+func (f OutputFormat) acceptsOptionalPath() bool {
+	switch f {
+	case OutputJSON:
+		return true // JSON can write to stdout OR to a file
 	default:
 		return false
 	}
@@ -180,7 +183,8 @@ func ParseFlags() (Config, error) {
 		return cfg, err
 	}
 
-	if !collector.has(OutputCLI) {
+	// Only add CLI as default if no other outputs are specified
+	if len(cfg.Outputs) == 0 {
 		_ = collector.add(OutputCLI, "")
 	}
 
@@ -388,21 +392,13 @@ func (o *outputCollector) add(format OutputFormat, path string) error {
 		return fmt.Errorf("output %s requires a file path", format.String())
 	}
 
-	if !format.requiresPath() && path != "" {
+	if !format.requiresPath() && !format.acceptsOptionalPath() && path != "" {
 		return fmt.Errorf("output %s does not accept a file path", format.String())
 	}
 
 	*o.targets = append(*o.targets, OutputTarget{Format: format, Path: path})
 	o.selected[format] = path
 	return nil
-}
-
-func (o *outputCollector) has(format OutputFormat) bool {
-	if o == nil {
-		return false
-	}
-	_, ok := o.selected[format]
-	return ok
 }
 
 func (o *outputCollector) pathFor(format OutputFormat) string {
@@ -464,10 +460,6 @@ func parseOutputFormat(value string) (OutputFormat, error) {
 		return OutputJSON, nil
 	case OutputRaw.String():
 		return OutputRaw, nil
-	case OutputGFText.String():
-		return OutputGFText, nil
-	case OutputGFJSON.String():
-		return OutputGFJSON, nil
 	default:
 		if value == "" {
 			return OutputHTML, nil
