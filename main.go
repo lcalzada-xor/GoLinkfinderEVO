@@ -62,6 +62,12 @@ func main() {
 		mode = output.ModeCLI
 	}
 
+	// When JSON is writing to stdout, send progress messages to stderr
+	progressOut := os.Stdout
+	if hasJSONOutput && jsonPath == "" {
+		progressOut = os.Stderr
+	}
+
 	targets, err := input.ResolveTargets(cfg)
 	if err != nil {
 		exitWithError(err)
@@ -139,25 +145,25 @@ func main() {
 				}
 
 				if task.fromDomain {
-					fmt.Printf("Running against: %s\n\n", task.target.URL)
+					fmt.Fprintf(progressOut, "Running against: %s\n\n", task.target.URL)
 				}
 
 				content, err := resolveContent(ctx, task.target, cfg)
 				if err != nil {
 					if network.IsTimeoutError(err) {
-						fmt.Printf("Request timed out for: %s\n", task.target.URL)
+						fmt.Fprintf(progressOut, "Request timed out for: %s\n", task.target.URL)
 						taskWg.Done()
 						continue
 					}
 
 					if network.IsDNSOrNetworkError(err) {
-						fmt.Printf("DNS or network error for: %s (host may not exist or be unreachable)\n", task.target.URL)
+						fmt.Fprintf(progressOut, "DNS or network error for: %s (host may not exist or be unreachable)\n", task.target.URL)
 						taskWg.Done()
 						continue
 					}
 
 					if task.fromDomain {
-						fmt.Printf("Invalid input defined or SSL error for: %s\n", task.target.URL)
+						fmt.Fprintf(progressOut, "Invalid input defined or SSL error for: %s\n", task.target.URL)
 						taskWg.Done()
 						continue
 					}
@@ -167,7 +173,9 @@ func main() {
 					continue
 				}
 
-				endpoints := parser.FindEndpoints(content, endpointRegex, mode.Includes(output.ModeHTML), filterRegex, true)
+				// Include context when outputting to HTML or JSON
+				includeContext := mode.Includes(output.ModeHTML) || hasJSONOutput
+				endpoints := parser.FindEndpoints(content, endpointRegex, includeContext, filterRegex, true)
 				report := output.ResourceReport{Resource: task.target.URL, Endpoints: endpoints}
 
 				outputMu.Lock()
@@ -179,7 +187,7 @@ func main() {
 				reportsMu.Unlock()
 
 				if cfg.Recursive != RecursionDisabled && task.visited != nil {
-					processDiscoveredResources(ctx, cfg, task.target.URL, endpoints, task.visited, enqueue, task.depth)
+					processDiscoveredResources(ctx, cfg, task.target.URL, endpoints, task.visited, enqueue, task.depth, progressOut)
 				}
 
 				taskWg.Done()
@@ -293,7 +301,7 @@ func resolveContent(ctx context.Context, t model.Target, cfg config.Config) (str
 // processDiscoveredResources handles recursive processing of discovered endpoints.
 // It validates, filters, and enqueues new resources for processing based on the configured recursion depth.
 func processDiscoveredResources(ctx context.Context, cfg config.Config, baseResource string, endpoints []model.Endpoint, visited *visitedSet,
-	enqueue func(resourceTask), depth int) {
+	enqueue func(resourceTask), depth int, progressOut *os.File) {
 	if visited == nil {
 		return
 	}
@@ -309,7 +317,7 @@ func processDiscoveredResources(ctx context.Context, cfg config.Config, baseReso
 		nextDepth = depth - 1
 		if nextDepth == RecursionDisabled {
 			// This was the last recursion level, print message after processing
-			defer fmt.Printf("Maximum recursion depth reached for %s\n", baseResource)
+			defer fmt.Fprintf(progressOut, "Maximum recursion depth reached for %s\n", baseResource)
 		}
 	}
 	// depth == RecursionUnlimited stays RecursionUnlimited

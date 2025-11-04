@@ -104,7 +104,7 @@ func ParseFlags() (Config, error) {
 		fmt.Fprintln(out, "Core Options:")
 
 		printOption(out, "input", "i", "string", "URL, file or folder to analyse. For folders you can use wildcards (e.g. '/*.js').", "")
-		printOption(out, "output", "o", "string", "Configure one or more outputs (e.g. 'cli', 'html=report.html', 'json=data.json'). May be repeated or comma separated.", "cli")
+		printOption(out, "output", "o", "string", "Configure one or more outputs (e.g. 'cli', 'json', 'html=report.html', 'json=data.json'). May be repeated or comma separated.", "cli")
 
 		fmt.Fprintln(out, "\nFiltering Options:")
 		printOption(out, "regex", "r", "string", "Only report endpoints matching the provided regular expression (e.g. '^/api/').", "")
@@ -443,7 +443,7 @@ func parseOutputEntry(entry string) (OutputFormat, string, error) {
 		return 0, "", fmt.Errorf("output %s requires a file path", format.String())
 	}
 
-	if !format.requiresPath() && path != "" {
+	if !format.requiresPath() && !format.acceptsOptionalPath() && path != "" {
 		return 0, "", fmt.Errorf("output %s does not accept a file path", format.String())
 	}
 
